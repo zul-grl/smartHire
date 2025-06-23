@@ -1,24 +1,27 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { model, Model, models, Schema } from "mongoose";
+import { Application } from "../types";
 
-const ApplicationSchema = new mongoose.Schema({
-  jobId: { type: Schema.Types.ObjectId, ref: "Jobs", required: true },
-  cvUrl: { type: String, required: true },
-  extractedText: { type: String, required: true },
-  matchPercentage: { type: Number, required: true },
-  matchedSkills: { type: [String], required: true },
-  bookmarked: { type: Boolean, default: false },
-  aiSummary: {
-    mainSentence: String,
-    skills: [String],
-    summary: String,
+const ApplicationSchema = new mongoose.Schema(
+  {
+    // jobId: { type: Schema.Types.ObjectId, ref: "Job", required: true },
+    cvUrl: { type: String, required: true },
+    extractedText: { type: String, required: true },
+    matchPercentage: { type: Number, required: true },
+    matchedSkills: { type: [String], required: true },
+    bookmarked: { type: Boolean, default: false },
+    aiSummary: {
+      mainSentence: { type: String },
+      skills: { type: [String] },
+      summary: { type: String },
+    },
+    status: {
+      type: String,
+      enum: ["shortlisted", "pending"],
+      default: "pending",
+    },
   },
-  status: {
-    type: String,
-    enum: ["shortlisted", "pending"],
-    default: "pending",
-  },
-  createdAt: { type: Date, default: Date.now },
-});
+  { timestamps: true }
+);
 
-export default mongoose.models.Application ||
-  mongoose.model("Application", ApplicationSchema);
+export const ApplicationModel: Model<Application> =
+  models["Application"] || model<Application>("Application", ApplicationSchema);

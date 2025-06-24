@@ -26,10 +26,8 @@ import CloudinaryUpload from "@/components/CloudinaryUpload";
 export default function Home() {
   const [selectedJob, setSelectedJob] = useState("");
   const [availableJobs, setAvailableJobs] = useState<Job[] | null>(null);
-  const [file, setFile] = useState<File>();
+  const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  console.log("file", file);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,6 +44,7 @@ export default function Home() {
 
   const handleFile = (file: File) => {
     setFile(file);
+    console.log("Selected file:", file.name, "Size:", file.size);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,20 +76,21 @@ export default function Home() {
           "Өргөдөл амжилттай илгээгдлээ! Бид тантай удахгүй холбогдох болно."
         );
         setSelectedJob("");
+        setFile(null);
       } else {
         alert("Алдаа гарлаа: " + (res.data.message || "Дахин оролдоно уу."));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("POST илгээхэд алдаа гарлаа:", err);
-      alert("Алдаа гарлаа: Сервертэй холбогдох үед асуудал гарлаа.");
+      alert(
+        "Алдаа гарлаа: " +
+          (err.response?.data?.message ||
+            "Сервертэй холбогдох үед асуудал гарлаа.")
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const selectedJobDetails = availableJobs?.find(
-    (job: Job) => job._id === selectedJob
-  );
 
   const handleUpload = async () => {
     const PRESET_NAME = "food-delivery-app";
@@ -107,21 +107,32 @@ export default function Home() {
 
     try {
       const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_NAME}/upload`,
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_NAME}/raw/upload`,
         {
           method: "POST",
           body: formData,
         }
       );
       const data = await res.json();
-      console.log("dataUpload", data);
-      console.log("dataUpload", data.secure_url);
+      if (!res.ok) {
+        console.error("Cloudinary upload failed:", data);
+        throw new Error(data.error?.message || "Файл хуулахад алдаа гарлаа.");
+      }
+      console.log("Cloudinary Response:", data);
       return data.secure_url;
     } catch (err) {
-      console.error(err);
-      alert("Failed to upload file");
+      console.error("Cloudinary upload error:", err);
+      alert(
+        "Файлыг хуулахад алдаа гарлаа: " +
+          (err instanceof Error ? err.message : "Unknown error")
+      );
+      return null;
     }
   };
+
+  const selectedJobDetails = availableJobs?.find(
+    (job) => job._id === selectedJob
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -169,10 +180,7 @@ export default function Home() {
                   <h3 className="font-semibold text-blue-900">
                     {selectedJobDetails.title}
                   </h3>
-                  <p className="text-sm text-blue-700 mb-2">
-                    {/* {selectedJobDetails} •{" "} */}
-                    {/* {selectedJobDetails.location} • {selectedJobDetails.type} */}
-                  </p>
+                  <p className="text-sm text-blue-700 mb-2"></p>
                   <div className="flex flex-wrap gap-2">
                     {selectedJobDetails.requirements.map((req, index) => (
                       <Badge key={index} variant="secondary">
@@ -186,9 +194,13 @@ export default function Home() {
           </Card>
           <CloudinaryUpload handleFile={handleFile} />
           <div className="flex justify-end">
-            <Button type="submit" size="lg" disabled={!selectedJob}>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={!selectedJob || !file || isSubmitting}
+            >
               <CheckCircle className="h-5 w-5 mr-2" />
-              Өргөдөл илгээх
+              {isSubmitting ? "Илгээж байна..." : "Өргөдөл илгээх"}
             </Button>
           </div>
         </form>

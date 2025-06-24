@@ -3,7 +3,7 @@ import { Application } from "../types";
 
 const ApplicationSchema = new mongoose.Schema(
   {
-    // jobId: { type: Schema.Types.ObjectId, ref: "Job", required: true },
+    jobId: { type: Schema.Types.ObjectId, ref: "Job", required: true },
     cvUrl: { type: String, required: true },
     extractedText: { type: String, required: true },
     matchPercentage: { type: Number, required: true },

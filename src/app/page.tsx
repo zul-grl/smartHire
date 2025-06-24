@@ -1,103 +1,198 @@
-import Image from "next/image";
+"use client";
+
+import type React from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle, Building2 } from "lucide-react";
+import { Job } from "@/server/types";
+import axios from "axios";
+import CloudinaryUpload from "@/components/CloudinaryUpload";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [selectedJob, setSelectedJob] = useState("");
+  const [availableJobs, setAvailableJobs] = useState<Job[] | null>(null);
+  const [file, setFile] = useState<File>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  console.log("file", file);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data } = await axios.get("/api/jobs");
+        setAvailableJobs(data.data);
+      } catch (err) {
+        console.error("Failed to fetch jobs:", err);
+        alert("Ажлын байрны мэдээлэл татаж чадсангүй.");
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleFile = (file: File) => {
+    setFile(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file || !selectedJob) {
+      alert("Файл болон ажлын байр сонгоно уу.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const uploadedUrl = await handleUpload();
+      if (!uploadedUrl) {
+        alert("Файлыг амжилттай байршуулж чадсангүй.");
+        return;
+      }
+      console.log("Uploaded URL:", uploadedUrl);
+
+      const formData = new FormData();
+      formData.append("cvUrl", uploadedUrl);
+      formData.append("jobId", selectedJob);
+
+      const res = await axios.post("/api/applications", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.data.success) {
+        alert(
+          "Өргөдөл амжилттай илгээгдлээ! Бид тантай удахгүй холбогдох болно."
+        );
+        setSelectedJob("");
+      } else {
+        alert("Алдаа гарлаа: " + (res.data.message || "Дахин оролдоно уу."));
+      }
+    } catch (err) {
+      console.error("POST илгээхэд алдаа гарлаа:", err);
+      alert("Алдаа гарлаа: Сервертэй холбогдох үед асуудал гарлаа.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const selectedJobDetails = availableJobs?.find(
+    (job: Job) => job._id === selectedJob
+  );
+
+  const handleUpload = async () => {
+    const PRESET_NAME = "food-delivery-app";
+    const CLOUDINARY_NAME = "ds6kxgjh0";
+    if (!file) {
+      alert("please select a file");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", PRESET_NAME);
+    formData.append("api_key", CLOUDINARY_NAME);
+
+    try {
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_NAME}/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      const data = await res.json();
+      console.log("dataUpload", data);
+      console.log("dataUpload", data.secure_url);
+      return data.secure_url;
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload file");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center py-4">
+            <div className="flex items-center">
+              <Building2 className="h-8 w-8 text-blue-600 mr-3" />
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  Ажилд орох
+                </h1>
+                <p className="text-sm text-gray-600">Өргөдөл гаргах хуудас</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </header>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Ажлын байр сонгох</CardTitle>
+              <CardDescription>
+                Та аль ажлын байранд өргөдөл гаргахыг хүсэж байна?
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedJob} onValueChange={setSelectedJob}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Ажлын байр сонгох" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableJobs?.map((job: Job) => (
+                    <SelectItem key={job._id} value={job._id}>
+                      {job.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {selectedJobDetails && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                  <h3 className="font-semibold text-blue-900">
+                    {selectedJobDetails.title}
+                  </h3>
+                  <p className="text-sm text-blue-700 mb-2">
+                    {/* {selectedJobDetails} •{" "} */}
+                    {/* {selectedJobDetails.location} • {selectedJobDetails.type} */}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedJobDetails.requirements.map((req, index) => (
+                      <Badge key={index} variant="secondary">
+                        {req}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <CloudinaryUpload handleFile={handleFile} />
+          <div className="flex justify-end">
+            <Button type="submit" size="lg" disabled={!selectedJob}>
+              <CheckCircle className="h-5 w-5 mr-2" />
+              Өргөдөл илгээх
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

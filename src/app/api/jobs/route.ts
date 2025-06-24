@@ -35,3 +35,19 @@ export const POST = async (req: NextRequest) => {
     );
   }
 };
+
+export const GET = async (req: NextRequest) => {
+  await connectMongoDb();
+
+  try {
+    const jobs = await JobModel.find().sort({ createdAt: -1 });
+
+    return NextResponse.json({ success: true, data: jobs });
+  } catch (error) {
+    console.error("Ажлын зарууд авахад алдаа гарлаа:", error);
+    return NextResponse.json(
+      { success: false, message: "Серверийн алдаа." },
+      { status: 500 }
+    );
+  }
+};

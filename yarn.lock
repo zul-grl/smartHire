@@ -618,6 +618,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/pdfjs-dist@^2.10.377":
+  version "2.10.377"
+  resolved "https://registry.npmjs.org/@types/pdfjs-dist/-/pdfjs-dist-2.10.377.tgz"
+  integrity sha512-RNBWpazVTkC5aiUIIo6d7ojlL0hJSoeQP1QCvTsVLW6qkNEpTALiI0DNGCYAGDfhbL0r17c/zNPQ15lk948UXg==
+  dependencies:
+    pdfjs-dist "*"
+
 "@types/react-dom@*", "@types/react-dom@^19":
   version "19.1.6"
   resolved "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.1.6.tgz"
@@ -2570,7 +2577,7 @@ pdf2json@^3.1.4:
   dependencies:
     "@xmldom/xmldom" "^0.8.10"
 
-pdfjs-dist@^5.3.31:
+pdfjs-dist@*, pdfjs-dist@^5.3.31:
   version "5.3.31"
   resolved "https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-5.3.31.tgz"
   integrity sha512-EhPdIjNX0fcdwYQO+e3BAAJPXt+XI29TZWC7COhIXs/K0JHcUt1Gdz1ITpebTwVMFiLsukdUZ3u0oTO7jij+VA==

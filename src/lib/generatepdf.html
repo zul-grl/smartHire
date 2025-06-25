@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PDF Text Extractor</title>
+  </head>
+  <body>
+    <h1>PDF URL-аас текст гаргах жишээ</h1>
+    <p>Текстийг Console дээр харуулна.</p>
+
+    <script type="module">
+      import * as pdfjsLib from "https://mozilla.github.io/pdf.js/build/pdf.mjs";
+
+      // Worker файлын замыг тохируулна
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://mozilla.github.io/pdf.js/build/pdf.worker.mjs";
+
+      // PDF URL-аас бүх хуудасны текстийг нэгтгэн авах функц
+      export async function extractText(pdfUrl) {
+        const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
+        const totalPageCount = pdf.numPages;
+        const texts = [];
+
+        for (
+          let currentPage = 1;
+          currentPage <= totalPageCount;
+          currentPage++
+        ) {
+          const page = await pdf.getPage(currentPage);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item) => item.str).join(" ");
+          texts.push(pageText);
+        }
+
+        return texts.join("\n\n");
+      }
+
+      // window дээр extractText-г байршуулж өөр газар дуудаж болно
+      window.extractText = extractText;
+
+      // Жишээ URL - өөрийн турших PDF-гийн URL-г оруулна уу
+      // const examplePdfUrl =
+      //   "https://res.cloudinary.com/ds6kxgjh0/raw/upload/v1750829847/becavu70caby6kcncxhn.pdf";
+
+      // // Үйлдлийг ажиллуулж, үр дүнг console-д гаргах
+      // extractText(examplePdfUrl)
+      //   .then((text) => {
+      //     console.log("Extracted PDF text:\n", text);
+      //   })
+      //   .catch((err) => {
+      //     console.error("PDF текст гаргах үед алдаа:", err);
+      //   });
+    </script>
+  </body>
+</html>

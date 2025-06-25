@@ -22,6 +22,11 @@ import { CheckCircle, Building2 } from "lucide-react";
 import { Job } from "@/server/types";
 import axios from "axios";
 import CloudinaryUpload from "@/components/CloudinaryUpload";
+declare global {
+  interface Window {
+    extractText: (pdfUrl: string) => Promise<string>;
+  }
+}
 
 export default function Home() {
   const [selectedJob, setSelectedJob] = useState("");
@@ -63,9 +68,13 @@ export default function Home() {
       }
       console.log("Uploaded URL:", uploadedUrl);
 
+      const extractedText = await (window as any).extractText(uploadedUrl);
+      console.log("Extracted Text:", extractedText);
+
       const formData = new FormData();
       formData.append("cvUrl", uploadedUrl);
       formData.append("jobId", selectedJob);
+      formData.append("cvText", extractedText);
 
       const res = await axios.post("/api/applications", formData, {
         headers: { "Content-Type": "multipart/form-data" },

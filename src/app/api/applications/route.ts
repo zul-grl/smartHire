@@ -3,30 +3,25 @@ import { ApplicationModel, JobModel } from "@/server/models";
 import { NextRequest, NextResponse } from "next/server";
 import PDFParser from "pdf2json";
 import OpenAI from "openai";
-import axios from "axios";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
-const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
 
 function extractAiSummary(content: string) {
   try {
     return JSON.parse(content);
   } catch {
     return {
-      mainSentence: "AI тайлбар уншигдсангүй.",
-      skills: [],
-      summary: content || "Хариу алга.",
+      matchPercentage: 0,
+      matchedSkills: [],
+      summary: content || "AI тайлбар уншигдсангүй.",
     };
   }
 }
 
 export const POST = async (req: NextRequest) => {
   try {
-    // Connect to MongoDB
     await connectMongoDb();
 
-    // Parse form data
     const formData = await req.formData();
     const cvUrl = formData.get("cvUrl") as string;
     const jobId = formData.get("jobId") as string;
@@ -40,75 +35,63 @@ export const POST = async (req: NextRequest) => {
 
     console.log("Received cvUrl:", cvUrl, "jobId:", jobId);
 
-    // Verify Cloudinary credentials
-    if (!CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-      console.error("Cloudinary credentials missing:", {
-        apiKey: CLOUDINARY_API_KEY,
-        apiSecret: CLOUDINARY_API_SECRET,
-      });
+    // PDF татаж авах (жишээ нь fetch эсвэл axios ашиглаж болно)
+    const response = await fetch(cvUrl);
+    if (!response.ok) {
       return NextResponse.json(
         {
           success: false,
-          message: "Cloudinary тохиргооны алдаа: API key эсвэл secret байхгүй.",
+          message: `CV татаж чадсангүй: ${response.status} - ${response.statusText}`,
         },
-        { status: 500 }
+        { status: 400 }
       );
     }
+    console.log("response", response);
 
-    // Fetch PDF from Cloudinary with authentication
-    const headers: Record<string, string> = {
-      Authorization: `Basic ${Buffer.from(
-        `${CLOUDINARY_API_KEY}:${CLOUDINARY_API_SECRET}`
-      ).toString("base64")}`,
-    };
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    const response = await axios
-      .get(cvUrl, {
-        responseType: "arraybuffer",
-        headers,
-      })
-      .catch((error) => {
-        console.error("Axios error fetching PDF:", {
-          status: error.response?.status,
-          data: error.response?.data?.toString() || "No response data",
-          message: error.message,
-        });
-        throw new Error(
-          `Failed to fetch PDF: ${
-            error.response?.status || "Unknown status"
-          } - ${error.response?.data?.error?.message || error.message}`
-        );
+    // pdf2json ашиглан текст гаргах
+    const pdfParser = new PDFParser();
+    const text = await new Promise<string>((resolve, reject) => {
+      pdfParser.on("pdfParser_dataError", (errData) => {
+        reject(new Error("PDF parsing error: " + errData.parserError));
       });
 
-    if (!response.data) {
+      pdfParser.on("pdfParser_dataReady", (pdfData) => {
+        if (!pdfData.Pages || pdfData.Pages.length === 0) {
+          reject(new Error("PDF дээр текст олдсонгүй."));
+          return;
+        }
+
+        const extractedText = pdfData.Pages.map((page) =>
+          page.Texts.map((textObj) =>
+            decodeURIComponent(textObj.R.map((r) => r.T).join(""))
+          ).join(" ")
+        ).join(" ");
+
+        if (!extractedText || extractedText.trim().length === 0) {
+          reject(new Error("PDF дээр уншигдах текст олдсонгүй."));
+          return;
+        }
+
+        resolve(extractedText.trim());
+      });
+
+      pdfParser.parseBuffer(buffer);
+    });
+
+    // Текст байгаа эсэхийг шалгах
+    if (!text || text.trim().length === 0) {
       return NextResponse.json(
-        { success: false, message: "CV файлыг уншиж чадсангүй." },
+        { success: false, message: "CV файлд уншигдах текст олдсонгүй." },
         { status: 400 }
       );
     }
 
-    // Parse PDF using pdf2json
-    const pdfParser = new PDFParser();
-    const buffer = Buffer.from(response.data);
-    const text = await new Promise<string>((resolve, reject) => {
-      pdfParser.on("pdfParser_dataError", (errData) => {
-        const errorMessage =
-          errData.parserError instanceof Error
-            ? errData.parserError.message
-            : String(errData.parserError || "Unknown PDF parsing error");
-        console.error("pdf2json parsing error:", errData);
-        reject(new Error(errorMessage));
-      });
-      pdfParser.on("pdfParser_dataReady", (pdfData) => {
-        const textContent = pdfData.Pages.map((page) =>
-          page.Texts.map((text) => decodeURIComponent(text.R[0].T)).join(" ")
-        ).join(" ");
-        resolve(textContent);
-      });
-      pdfParser.parseBuffer(buffer);
-    });
+    console.log("Extracted text:", text);
 
-    // Find job
+    // Ажлын зар авах
     const job = await JobModel.findById(jobId);
     if (!job) {
       return NextResponse.json(
@@ -117,50 +100,49 @@ export const POST = async (req: NextRequest) => {
       );
     }
 
-    // Match skills
-    const matchedSkills = job.requirements.filter((req: string) =>
-      text.toLowerCase().includes(req.toLowerCase())
-    );
-
-    const matchPercentage = Math.round(
-      (matchedSkills.length / job.requirements.length) * 100
-    );
-
-    // Generate AI prompt
-    const prompt = `Доорх CV-г уншаад "${
+    // AI-д prompt үүсгэх
+    const prompt = `
+Доорх CV-г уншаад "${
       job.title
-    }" ажлын шаардлагад хэрхэн нийцэж байгааг 3 хэсэгт ангилж монгол хэл дээр гарга:
-1. Үндсэн шалтгаан (mainSentence)
-2. Таарсан ур чадварууд (skills)
-3. Туршлагын товч тайлбар (summary)
+    }" ажлын шаардлагад хэрхэн нийцэж байгааг дараах JSON хэлбэрээр гарга:
 
-CV:
+{
+  "matchPercentage": [0-100],
+  "matchedSkills": ["..."],
+  "summary": "Товч тайлбар..."
+}
+
+CV текст:
 ${text}
 
 Ажлын шаардлага:
-${job.requirements.join(", ")}`;
+${job.requirements.join(", ")}
+`;
 
-    // Get AI response
+    // AI хариу авах
     const aiResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
     });
 
     const aiContent = aiResponse.choices[0].message.content ?? "";
-    const aiSummary = extractAiSummary(aiContent);
+    const aiResult = extractAiSummary(aiContent);
 
-    // Determine status
-    const status = matchPercentage >= 70 ? "shortlisted" : "pending";
+    const status = aiResult.matchPercentage >= 70 ? "shortlisted" : "pending";
 
-    // Create application
+    // Өргөдөл үүсгэх
     const application = await ApplicationModel.create({
       jobId,
       cvUrl,
       extractedText: text,
-      matchPercentage,
-      matchedSkills,
+      matchPercentage: aiResult.matchPercentage,
+      matchedSkills: aiResult.matchedSkills,
       bookmarked: false,
-      aiSummary,
+      aiSummary: {
+        mainSentence: aiResult.summary,
+        skills: aiResult.matchedSkills,
+        summary: aiResult.summary,
+      },
       status,
     });
 

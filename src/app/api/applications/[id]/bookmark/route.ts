@@ -10,28 +10,55 @@ export const PATCH = async (
 
   try {
     const { id } = params;
+    console.log("PATCH request for application ID:", id); // Debug
+    const { status, bookmarked } = await req.json();
+    console.log("Request body:", { status, bookmarked }); // Debug
 
-    const application = await ApplicationModel.findById(id);
-    if (!application) {
+    if (status && !["pending", "shortlisted"].includes(status)) {
       return NextResponse.json(
-        { success: false, message: "CV олдсонгүй." },
+        { success: false, message: "Invalid status value" },
+        { status: 400 }
+      );
+    }
+
+    if (bookmarked !== undefined && typeof bookmarked !== "boolean") {
+      return NextResponse.json(
+        { success: false, message: "Invalid bookmark value" },
+        { status: 400 }
+      );
+    }
+
+    const updateData: Record<string, any> = {};
+    if (status !== undefined) updateData.status = status;
+    if (bookmarked !== undefined) updateData.bookmarked = bookmarked;
+
+    const application = await ApplicationModel.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true }
+    ).populate("jobId");
+
+    if (!application) {
+      console.log("Application not found for ID:", id); // Debug
+      return NextResponse.json(
+        { success: false, message: "Application not found" },
         { status: 404 }
       );
     }
 
-    // Bookmark статусыг эсрэг болгож солих
-    application.bookmarked = !application.bookmarked;
-    await application.save();
-
+    console.log("Updated application:", application); // Debug
     return NextResponse.json({
       success: true,
       data: application,
-      message: "Bookmark статус амжилттай солигдлоо.",
+      message: "Update successful",
     });
   } catch (error) {
-    console.error("Bookmark error:", error);
+    console.error("Update error:", error);
     return NextResponse.json(
-      { success: false, message: "Серверийн алдаа." },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Server error",
+      },
       { status: 500 }
     );
   }

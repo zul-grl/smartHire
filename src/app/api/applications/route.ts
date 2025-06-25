@@ -101,3 +101,21 @@ ${job.requirements.join(", ")}
     );
   }
 };
+export const GET = async (_req: NextRequest) => {
+  try {
+    await connectMongoDb();
+    const applications = await ApplicationModel.find().sort({ createdAt: -1 });
+    return NextResponse.json({ success: true, data: applications });
+  } catch (error) {
+    console.error("Error fetching applications:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: `Серверийн алдаа: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      },
+      { status: 500 }
+    );
+  }
+};

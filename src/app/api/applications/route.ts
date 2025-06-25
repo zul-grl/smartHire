@@ -101,7 +101,7 @@ ${job.requirements.join(", ")}
     );
   }
 };
-export const GET = async (_req: NextRequest) => {
+export const GET = async () => {
   try {
     await connectMongoDb();
     const applications = await ApplicationModel.find().sort({ createdAt: -1 });

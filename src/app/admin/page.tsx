@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Loader2,
   Calendar,
-  User,
   TrendingUp,
   Eye,
   Download,
@@ -99,12 +98,12 @@ export default function ApplicationPanel() {
       const newBookmarkStatus = !application.bookmarked;
       console.log("Toggling bookmark for ID:", id, "to:", newBookmarkStatus); // Debug
 
-      const res = await fetch(`/api/applications/${id}/bookmark`, {
+      const res = await fetch(`/api/applications/bookmark`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ bookmarked: newBookmarkStatus }),
+        body: JSON.stringify({ id, bookmarked: newBookmarkStatus }), // ✅ ID-г body дотор явуулж байна
       });
 
       if (!res.ok) {

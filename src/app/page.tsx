@@ -68,7 +68,7 @@ export default function Home() {
       }
       console.log("Uploaded URL:", uploadedUrl);
 
-      const extractedText = await (window as any).extractText(uploadedUrl);
+      const extractedText = await window.extractText(uploadedUrl as string);
       console.log("Extracted Text:", extractedText);
 
       const formData = new FormData();
@@ -89,13 +89,8 @@ export default function Home() {
       } else {
         alert("Алдаа гарлаа: " + (res.data.message || "Дахин оролдоно уу."));
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("POST илгээхэд алдаа гарлаа:", err);
-      alert(
-        "Алдаа гарлаа: " +
-          (err.response?.data?.message ||
-            "Сервертэй холбогдох үед асуудал гарлаа.")
-      );
     } finally {
       setIsSubmitting(false);
     }

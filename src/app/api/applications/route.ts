@@ -17,6 +17,15 @@ function extractAiSummary(content: string) {
   }
 }
 
+// Текстийг хуваах функц
+const chunkText = (text: string, maxLength: number): string[] => {
+  const chunks: string[] = [];
+  for (let i = 0; i < text.length; i += maxLength) {
+    chunks.push(text.slice(i, i + maxLength));
+  }
+  return chunks;
+};
+
 export const POST = async (req: NextRequest) => {
   try {
     await connectMongoDb();
@@ -24,7 +33,9 @@ export const POST = async (req: NextRequest) => {
     const formData = await req.formData();
     const cvUrl = formData.get("cvUrl") as string;
     const jobId = formData.get("jobId") as string;
-    const cvText = formData.get("cvText") as string;
+    let cvText = formData.get("cvText") as string;
+
+    console.log("CV TEXT", cvText);
 
     if (!cvUrl || !jobId || !cvText) {
       return NextResponse.json(
@@ -41,45 +52,64 @@ export const POST = async (req: NextRequest) => {
       );
     }
 
-    const prompt = `
-Доорх CV-г уншаад "${
-      job.title
-    }" ажлын шаардлагад хэрхэн нийцэж байгааг дараах JSON хэлбэрээр гарга:
+    // CV текстийг хуваах
+    const chunks = chunkText(cvText, 50000);
+    let aiResults: any[] = [];
 
+    for (const chunk of chunks) {
+      const prompt = `
+CV текст болон ажлын шаардлагыг уншаад, хэрхэн нийцэж байгааг шинжил. Дараах зааврыг дага:
+
+1. **Хэлний онцлог**: CV текст нь монгол (кирилл) болон англи хэлний холимог байна. Монгол хэлний нэр (жишээ нь, "Тодхүү", "Төгөлдөр") болон техникийн нэр томьёог (жишээ нь, "JavaScript", "Next.js") зөв тань.
+2. **Туршлага ба төсөл**: CV-д дурдагдсан туршлагын хугацаа (жишээ нь, "1+ жил"), төслүүд (жишээ нь, "Vibe Store", "Tinder Clone"), онцлох шийдлүүд (жишээ нь, "бодит цагийн чат", "QPay төлбөрийн систем")-ийг тодорхой илрүүл.
+3. **Ур чадварын харьцуулалт**: Ажлын шаардлага болон CV-ийн ур чадваруудыг (жишээ нь, "ReactJS ахисан түвшний мэдлэг", "NextJS App Router туршлага") нарийвчлан харьцуулж, нийцсэн ур чадваруудыг жагсаа.
+4. **Товч тайлбар**: Хариуг товч, тодорхой зөв бич. CV-ийн гол давуу тал, ажлын шаардлагад хэрхэн нийцэж буйг өөрийнхөөрөө онцол.
+5. **JSON формат**: Хариуг дараах JSON хэлбэрээр гарга өөр юм бичихгүй:
 {
   "matchPercentage": [0-100],
-  "matchedSkills": ["..."],
-  "summary": "Товч тайлбар..."
+  "matchedSkills": ["ур чадвар1", "ур чадвар2", ...],
+  "summary": "Товч тайлбар: CV-ийн гол давуу тал ба ажлын шаардлагад хэрхэн нийцсэн тухай..."
 }
 
 CV текст:
-${cvText}
+${chunk}
 
 Ажлын шаардлага:
 ${job.requirements.join(", ")}
 `;
 
-    const aiResponse = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: prompt }],
-    });
+      const aiResponse = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+      });
 
-    const aiContent = aiResponse.choices[0].message?.content ?? "";
-    const aiResult = extractAiSummary(aiContent);
+      const aiContent = aiResponse.choices[0].message?.content ?? "";
+      aiResults.push(extractAiSummary(aiContent));
+    }
 
-    const status = aiResult.matchPercentage >= 70 ? "shortlisted" : "pending";
+    // AI-ийн үр дүнг нэгтгэх
+    const finalResult = {
+      matchPercentage: Math.max(...aiResults.map((r) => r.matchPercentage)),
+      matchedSkills: Array.from(
+        new Set(aiResults.flatMap((r) => r.matchedSkills))
+      ),
+      summary: aiResults.map((r) => r.summary).join(" "),
+    };
+
+    const status =
+      finalResult.matchPercentage >= 70 ? "shortlisted" : "pending";
 
     const application = await ApplicationModel.create({
       jobId,
       cvUrl,
       extractedText: cvText,
-      matchPercentage: aiResult.matchPercentage,
-      matchedSkills: aiResult.matchedSkills,
+      matchPercentage: finalResult.matchPercentage,
+      matchedSkills: finalResult.matchedSkills,
       bookmarked: false,
       aiSummary: {
-        mainSentence: aiResult.summary,
-        skills: aiResult.matchedSkills,
-        summary: aiResult.summary,
+        mainSentence: finalResult.summary,
+        skills: finalResult.matchedSkills,
+        summary: finalResult.summary,
       },
       status,
     });
@@ -101,6 +131,7 @@ ${job.requirements.join(", ")}
     );
   }
 };
+
 export const GET = async () => {
   try {
     await connectMongoDb();

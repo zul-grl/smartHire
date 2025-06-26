@@ -39,17 +39,17 @@
       window.extractText = extractText;
 
       // Жишээ URL - өөрийн турших PDF-гийн URL-г оруулна уу
-      // const examplePdfUrl =
-      //   "https://res.cloudinary.com/ds6kxgjh0/raw/upload/v1750829847/becavu70caby6kcncxhn.pdf";
+      const examplePdfUrl =
+        "https://res.cloudinary.com/ds6kxgjh0/raw/upload/v1750829847/becavu70caby6kcncxhn.pdf";
 
-      // // Үйлдлийг ажиллуулж, үр дүнг console-д гаргах
-      // extractText(examplePdfUrl)
-      //   .then((text) => {
-      //     console.log("Extracted PDF text:\n", text);
-      //   })
-      //   .catch((err) => {
-      //     console.error("PDF текст гаргах үед алдаа:", err);
-      //   });
+      // Үйлдлийг ажиллуулж, үр дүнг console-д гаргах
+      extractText(examplePdfUrl)
+        .then((text) => {
+          console.log("Extracted PDF text:\n", text);
+        })
+        .catch((err) => {
+          console.error("PDF текст гаргах үед алдаа:", err);
+        });
     </script>
   </body>
 </html>

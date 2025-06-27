@@ -1,5 +1,6 @@
 export interface AiSummary {
-  mainSentence: string;
+  firstname: string;
+  lastname: string;
   skills: string[];
   summary: string;
 }

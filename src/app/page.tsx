@@ -27,7 +27,7 @@ import { Job } from "@/server/types";
 // Текстийг цэвэрлэх функц
 const cleanText = (text: string): string => {
   return text
-    .replace(/[^\w\s.,!?@а-яА-Я]/g, "") // Монгол кирилл, англи, тоо, тусгай тэмдэгт
+    .replace(/[^\w\s.,!?@а-яА-ЯөүӨҮ]/g, "")
     .replace(/\s+/g, " ") // Давхардсан зай арилгах
     .replace(/(\w)\s+\.\s+(\w)/g, "$1.$2") // "Ne x t. j s" → "Next.js"
     .trim();
@@ -35,7 +35,7 @@ const cleanText = (text: string): string => {
 
 // Текстийг эмх замбараагүй эсэхийг шалгах
 const isTextGarbled = (text: string): boolean => {
-  const garbledPattern = /[^\w\s.,!?@а-яА-Я]/g;
+  const garbledPattern = /[^\w\s.,!?@а-яА-ЯөүӨҮ]/g;
   const garbledCount = (text.match(garbledPattern) || []).length;
   return garbledCount / text.length > 0.3 || text.length < 50;
 };

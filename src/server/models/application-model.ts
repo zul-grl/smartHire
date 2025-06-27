@@ -10,7 +10,8 @@ const ApplicationSchema = new mongoose.Schema(
     matchedSkills: { type: [String], required: true },
     bookmarked: { type: Boolean, default: false },
     aiSummary: {
-      mainSentence: { type: String },
+      firstName: { type: String },
+      lastName: { type: String },
       skills: { type: [String] },
       summary: { type: String },
     },

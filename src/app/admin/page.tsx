@@ -31,8 +31,8 @@ export interface Application {
   matchedSkills: string[];
   bookmarked: boolean;
   aiSummary: {
-    firstname: string;
-    lastname: string;
+    firstName: string;
+    lastName: string;
     skills: string[];
     summary: string;
   };
@@ -294,10 +294,14 @@ export default function ApplicationPanel() {
 
                   {/* AI Summary */}
                   <div className="mb-4">
-                    <p className="text-gray-800 font-medium mb-2">
-                      {application.aiSummary.firstname}
-                      {application.aiSummary.lastname}
-                    </p>
+                    <div className="flex gap-2">
+                      <p className="text-gray-800 font-medium mb-2">
+                        {application.aiSummary.firstName}
+                      </p>
+                      <p className="text-gray-800 font-medium mb-2">
+                        {application.aiSummary.lastName}
+                      </p>
+                    </div>
                     <p className="text-gray-600 text-sm leading-relaxed">
                       {application.aiSummary.summary}
                     </p>

@@ -24,6 +24,8 @@ import axios from "axios";
 import CloudinaryUpload from "@/components/CloudinaryUpload";
 import { Job } from "@/server/types";
 import { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/api";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const cleanText = (text: string): string => {
   return text
@@ -173,6 +175,7 @@ export default function Home() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedText, setExtractedText] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -261,7 +264,8 @@ export default function Home() {
       });
 
       if (res.data.success) {
-        alert("Өргөдөл амжилттай илгээгдлээ!");
+        toast("Өргөдөл амжилттай илгээгдлээ!");
+        router.push("/admin");
         setSelectedJob("");
         setFile(null);
         setExtractedText("");

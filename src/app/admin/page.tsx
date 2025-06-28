@@ -195,14 +195,16 @@ export default function ApplicationPanel() {
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm p-4">
-        <h1 className="text-2xl font-bold text-gray-800">
-          Аппликейшн удирдлага
-        </h1>
-        <p className="text-gray-600">CV-нуудын жагсаалт</p>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Аппликейшн удирдлага
+          </h1>
+          <p className="text-gray-600">CV-нуудын жагсаалт</p>
+        </div>
       </div>
 
       {/* Filters */}
-      <Card className="border-0 shadow-md">
+      <Card className="border-0 shadow-md max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <CardContent className="p-2">
           <div className="flex flex-col space-y-4">
             <Tabs
@@ -282,11 +284,11 @@ export default function ApplicationPanel() {
           <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
         </div>
       ) : filteredApplications.length > 0 ? (
-        <div className="divide-y divide-gray-200 bg-white rounded-lg shadow-sm">
+        <div className="divide-y divide-gray-200 bg-white rounded-lg shadow-sm max-w-4xl m-auto">
           {filteredApplications.map((application) => (
             <div
               key={application._id}
-              className="p-6 hover:bg-gray-50 transition-colors"
+              className="p-6 hover:bg-gray-50 transition-colors max-w-4xl mx-auto px-4 sm:px-6 lg:px-8"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">

@@ -5,6 +5,14 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+type AiResult = {
+  matchPercentage: number;
+  matchedSkills: string[];
+  summary: string;
+  firstName: string;
+  lastName: string;
+};
+
 function extractAiSummary(content: string) {
   try {
     console.log("Raw AI content:", content.substring(0, 500));
@@ -52,7 +60,7 @@ export const POST = async (req: NextRequest) => {
     const formData = await req.formData();
     const cvUrl = formData.get("cvUrl") as string;
     const jobId = formData.get("jobId") as string;
-    let cvText = formData.get("cvText") as string;
+    const cvText = formData.get("cvText") as string;
 
     if (!cvUrl || !jobId || !cvText) {
       return NextResponse.json(
@@ -74,7 +82,7 @@ export const POST = async (req: NextRequest) => {
 
     // CV текстийг хуваах
     const chunks = chunkText(cvText, 20000);
-    let aiResults: any[] = [];
+    const aiResults: AiResult[] = [];
 
     for (const chunk of chunks) {
       const prompt = `

@@ -23,8 +23,8 @@ import { CheckCircle, Building2, FileText, Loader2 } from "lucide-react";
 import axios from "axios";
 import CloudinaryUpload from "@/components/CloudinaryUpload";
 import { Job } from "@/server/types";
+import { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/api";
 
-// Текстийг цэвэрлэх функц
 const cleanText = (text: string): string => {
   return text
     .replace(/[^\w\s.,!?@а-яА-ЯөүӨҮ]/g, "")
@@ -32,15 +32,12 @@ const cleanText = (text: string): string => {
     .replace(/(\w)\s+\.\s+(\w)/g, "$1.$2") // "Ne x t. j s" → "Next.js"
     .trim();
 };
-
-// Текстийг эмх замбараагүй эсэхийг шалгах
 const isTextGarbled = (text: string): boolean => {
   const garbledPattern = /[^\w\s.,!?@а-яА-ЯөүӨҮ]/g;
   const garbledCount = (text.match(garbledPattern) || []).length;
   return garbledCount / text.length > 0.3 || text.length < 50;
 };
 
-// PDF-ээс зураг гаргах функц (браузерын canvas ашиглана)
 const pdfToImages = async (pdfUrl: string): Promise<string[]> => {
   try {
     pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
@@ -85,7 +82,6 @@ const pdfToImages = async (pdfUrl: string): Promise<string[]> => {
   }
 };
 
-// PDF-ээс текст гаргах функц (pdf.js)
 const extractTextFromPDF = async (pdfUrl: string): Promise<string> => {
   try {
     pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
@@ -104,7 +100,12 @@ const extractTextFromPDF = async (pdfUrl: string): Promise<string> => {
       const page = await pdf.getPage(currentPage);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
-        .map((item: any) => item.str || "")
+        .map((item: TextItem | TextMarkedContent) => {
+          if ("str" in item) {
+            return item.str || "";
+          }
+          return "";
+        })
         .filter((text: string) => text.trim().length > 0)
         .join(" ");
       texts.push(pageText);
@@ -150,8 +151,6 @@ const extractTextWithOCR = async (pdfUrl: string): Promise<string> => {
     );
   }
 };
-
-// Нэгтгэсэн текст гаргах функц
 const extractText = async (pdfUrl: string): Promise<string> => {
   try {
     const text = await extractTextFromPDF(pdfUrl);
@@ -160,7 +159,7 @@ const extractText = async (pdfUrl: string): Promise<string> => {
       return await extractTextWithOCR(pdfUrl);
     }
     return text;
-  } catch (error) {
+  } catch {
     console.log("pdf.js амжилтгүй, OCR-г оролдож байна...");
     return await extractTextWithOCR(pdfUrl);
   }

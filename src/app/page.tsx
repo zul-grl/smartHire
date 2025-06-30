@@ -286,7 +286,7 @@ export default function Home() {
       <header className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 text-white">
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
-          <h1 className="text-3xl sm:text-5xl font-bold mb-4 animate-fade-in-up" style={{animationDelay: '0.1s'}}>
+          <h1 className="text-3xl sm:text-5xl font-bold mb-4 animate-fade-in-up text-white" style={{animationDelay: '0.1s'}}>
             Таны ирээдүйн карьер энд эхэлнэ
           </h1>
           <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto animate-fade-in-up" style={{animationDelay: '0.2s'}}>

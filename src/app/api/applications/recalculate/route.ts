@@ -1,6 +1,6 @@
 import { connectMongoDb } from "@/server/lib/mongodb";
 import { ApplicationModel, JobModel } from "@/server/models";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -52,7 +52,6 @@ const chunkText = (text: string, maxLength: number): string[] => {
   return chunks;
 };
 
-// Gemini response авах функц
 async function getGeminiResponse(prompt: string) {
   try {
     const model = genAI.getGenerativeModel({
@@ -67,35 +66,46 @@ async function getGeminiResponse(prompt: string) {
   }
 }
 
-export const POST = async (req: NextRequest) => {
+export async function POST() {
   try {
     await connectMongoDb();
 
-    const formData = await req.formData();
-    const cvUrl = formData.get("cvUrl") as string;
-    const jobId = formData.get("jobId") as string;
-    const cvText = formData.get("cvText") as string;
-
-    if (!cvUrl || !jobId || !cvText) {
+    // Check if API key exists
+    if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
-        { success: false, message: "CV URL, CV текст, jobId шаардлагатай." },
-        { status: 400 }
+        { 
+          success: false, 
+          message: "GEMINI_API_KEY is not configured. Please add it to your .env file.",
+          updated: 0 
+        },
+        { status: 500 }
       );
     }
 
-    const job = await JobModel.findById(jobId);
-    if (!job) {
-      return NextResponse.json(
-        { success: false, message: "Ажлын зар олдсонгүй." },
-        { status: 404 }
-      );
-    }
+    // Get all applications without matchPercentage or with 0
+    const applications = await ApplicationModel.find({
+      $or: [
+        { matchPercentage: { $exists: false } },
+        { matchPercentage: null },
+        { matchPercentage: 0 }
+      ]
+    }).populate("jobId");
 
-    const chunks = chunkText(cvText, 20000);
-    const aiResults: AiResult[] = [];
+    let updatedCount = 0;
+    const errors: any[] = [];
 
-    for (const chunk of chunks) {
-      const prompt = `
+    for (const application of applications) {
+      try {
+        if (!application.jobId || !application.extractedText) {
+          continue;
+        }
+
+        const job = application.jobId as any;
+        const chunks = chunkText(application.extractedText, 20000);
+        const aiResults: AiResult[] = [];
+
+        for (const chunk of chunks) {
+          const prompt = `
 Таны үүрэг: Доорх CV текст болон ажлын шаардлагыг мэргэжлийн түвшинд шинжилж, дараах даалгаврыг биелүүлнэ үү:
 
 1. Монгол (кирилл) болон англи хэлний холимог текстэд ажиллана. Монгол нэр, овог, тусгай үсэг ("ү", "ө", "ё" гэх мэт)-ийг зөв бичнэ. Техникийн нэр томьёог яг хэвээр хадгална.
@@ -126,87 +136,74 @@ ${job.requirements.join(", ")}
 Зөвхөн цэвэр, parse хийхэд бэлэн JSON хариу буцаана уу. Бусад тайлбар, текст, markdown, код блок битгий бичээрэй.
 `;
 
-      const aiContent = await getGeminiResponse(prompt);
+          const aiContent = await getGeminiResponse(prompt);
 
-      if (!aiContent) {
-        console.error("Gemini AI response хоосон байна.");
-        continue;
+          if (!aiContent) {
+            console.error("Gemini AI response хоосон байна.");
+            continue;
+          }
+
+          const result = extractAiSummary(aiContent);
+          aiResults.push(result);
+        }
+
+        if (aiResults.length === 0) {
+          continue;
+        }
+
+        const uniqueSkills = Array.from(
+          new Set(aiResults.flatMap((r) => r.matchedSkills))
+        );
+        const finalResult = {
+          matchPercentage: Math.max(...aiResults.map((r) => r.matchPercentage)),
+          matchedSkills: uniqueSkills,
+          summary: aiResults
+            .map((r) => r.summary)
+            .filter((s, i, arr) => arr.indexOf(s) === i)
+            .join(" "),
+          firstName: aiResults[0]?.firstName || "",
+          lastName: aiResults[0]?.lastName || "",
+        };
+
+        const status =
+          finalResult.matchPercentage >= 80 ? "shortlisted" : "pending";
+
+        // Update the application
+        await ApplicationModel.findByIdAndUpdate(application._id, {
+          matchPercentage: finalResult.matchPercentage,
+          matchedSkills: finalResult.matchedSkills,
+          status,
+          aiSummary: {
+            firstName: finalResult.firstName,
+            lastName: finalResult.lastName,
+            skills: finalResult.matchedSkills,
+            summary: finalResult.summary,
+          },
+        });
+
+        updatedCount++;
+      } catch (error) {
+        console.error(`Error updating application ${application._id}:`, error);
+        errors.push({
+          applicationId: application._id,
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
       }
-
-      const result = extractAiSummary(aiContent);
-      aiResults.push(result);
     }
 
-    const uniqueSkills = Array.from(
-      new Set(aiResults.flatMap((r) => r.matchedSkills))
-    );
-    const finalResult = {
-      matchPercentage: Math.max(...aiResults.map((r) => r.matchPercentage)),
-      matchedSkills: uniqueSkills,
-      summary: aiResults
-        .map((r) => r.summary)
-        .filter((s, i, arr) => arr.indexOf(s) === i)
-        .join(" "),
-      firstName: aiResults[0]?.firstName || "",
-      lastName: aiResults[0]?.lastName || "",
-    };
-
-    const status =
-      finalResult.matchPercentage >= 80 ? "shortlisted" : "pending";
-
-    const application = await ApplicationModel.create({
-      jobId,
-      cvUrl,
-      extractedText: cvText,
-      matchPercentage: finalResult.matchPercentage,
-      matchedSkills: finalResult.matchedSkills,
-      bookmarked: false,
-      aiSummary: {
-        firstName: finalResult.firstName,
-        lastName: finalResult.lastName,
-        skills: finalResult.matchedSkills,
-        summary: finalResult.summary,
-      },
-      status,
-    });
-
-    return NextResponse.json(
-      { success: true, data: application },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Error processing application:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: `Серверийн алдаа: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      },
-      { status: 500 }
-    );
-  }
-};
-
-export async function GET() {
-  try {
-    await connectMongoDb();
-
-    const applications = await ApplicationModel.find({})
-      .populate("jobId", "title company description requirements")
-      .sort({ createdAt: -1 })
-      .lean();
     return NextResponse.json({
       success: true,
-      data: applications,
+      message: `Successfully recalculated ${updatedCount} applications`,
+      total: applications.length,
+      updated: updatedCount,
+      errors: errors.length > 0 ? errors : undefined
     });
   } catch (error) {
-    console.error("Applications fetch error:", error);
+    console.error("Recalculation error:", error);
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch applications",
-        error: error instanceof Error ? error.message : "Unknown error",
+        message: error instanceof Error ? error.message : "Server error",
       },
       { status: 500 }
     );

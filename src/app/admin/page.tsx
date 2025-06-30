@@ -16,6 +16,9 @@ import {
   Calendar,
   TrendingUp,
   Eye,
+  Building2,
+  ArrowLeft,
+  RefreshCw,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -59,7 +62,8 @@ const formatDate = (dateString: string) => {
   })
 }
 
-const getMatchColor = (percentage: number) => {
+const getMatchColor = (percentage: number | undefined | null) => {
+  if (!percentage && percentage !== 0) return "bg-gray-100 text-gray-800"
   if (percentage >= 80) return "bg-green-100 text-green-800"
   if (percentage >= 50) return "bg-yellow-100 text-yellow-800"
   return "bg-red-100 text-red-800"
@@ -98,6 +102,7 @@ export default function ApplicationPanel() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingJobId, setEditingJobId] = useState<string | null>(null)
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
+  const [isRecalculating, setIsRecalculating] = useState(false)
 
   const handleViewCv = (cvUrl: string) => {
     setSelectedCvUrl(cvUrl)
@@ -133,6 +138,29 @@ export default function ApplicationPanel() {
       toast.error("Аппликейшн ачаалахад алдаа гарлаа")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const recalculateMatchPercentages = async () => {
+    setIsRecalculating(true)
+    try {
+      const res = await fetch("/api/applications/recalculate", {
+        method: "POST",
+      })
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.message || "Дахин тооцоолоход алдаа гарлаа")
+      }
+      const data = await res.json()
+      toast.success(`${data.updated} өргөдлийн тохирол амжилттай тооцоологдлоо`)
+      
+      // Refresh applications list
+      await fetchApplications()
+    } catch (error) {
+      console.error("Recalculation error:", error)
+      toast.error(error instanceof Error ? error.message : "Дахин тооцоолоход алдаа гарлаа")
+    } finally {
+      setIsRecalculating(false)
     }
   }
 
@@ -309,26 +337,62 @@ export default function ApplicationPanel() {
   }, [])
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-        <div className="flex items-center justify-between ">
-          <div>
-            <h1 className="text-3xl font-bold">SmartHire Admin Panel</h1>
-            <p className="text-gray-600 mt-1">Ажлын байр болон аппликейшн удирдлага</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold ">{applications.length}</p>
-              <p className="text-sm text-gray-500">Нийт CV</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Navigation Bar */}
+      <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
+                <Building2 className="h-8 w-8 text-blue-600" />
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  SmartHire
+                </h1>
+              </div>
+              <div className="h-6 w-px bg-gray-300" />
+              <span className="text-sm font-medium text-gray-600">Admin Panel</span>
             </div>
-            <div className="w-px h-12 bg-gray-200"></div>
-            <div className="text-center">
-              <p className="text-2xl font-bold">{jobs.length}</p>
-              <p className="text-sm text-gray-500">Ажлын байр</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.location.href = '/'}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Landing Page
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Stats Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-xl p-8 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Admin Dashboard</h2>
+              <p className="text-blue-100">Ажлын байр болон өргөдөл удирдах систем</p>
+            </div>
+            <div className="flex items-center gap-8">
+              <div className="text-center">
+                <p className="text-4xl font-bold animate-fade-in-up">{applications.length}</p>
+                <p className="text-sm text-blue-100 mt-1">Нийт өргөдөл</p>
+              </div>
+              <div className="w-px h-16 bg-white/20" />
+              <div className="text-center">
+                <p className="text-4xl font-bold animate-fade-in-up" style={{animationDelay: '0.1s'}}>{jobs.length}</p>
+                <p className="text-sm text-blue-100 mt-1">Ажлын байр</p>
+              </div>
+              <div className="w-px h-16 bg-white/20" />
+              <div className="text-center">
+                <p className="text-4xl font-bold animate-fade-in-up" style={{animationDelay: '0.2s'}}>
+                  {applications.filter(a => a.status === 'shortlisted').length}
+                </p>
+                <p className="text-sm text-blue-100 mt-1">Шигшигдсэн</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
       <Dialog open={isCvModalOpen} onOpenChange={setIsCvModalOpen}>
         <DialogContent className="min-w-[40vw] min-h-[70vh] overflow-auto m-0">
@@ -353,9 +417,7 @@ export default function ApplicationPanel() {
         </DialogContent>
       </Dialog>
 
-      <div className="border-0 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="min-h-screen">
-          <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in-up" style={{animationDelay: '0.3s'}}>
             {/* Main Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList className="grid grid-cols-2 w-full bg-white/50 backdrop-blur-sm h-14 p-1 rounded-xl shadow-lg border border-gray-100">
@@ -388,7 +450,7 @@ export default function ApplicationPanel() {
                   {selectedJob && (
                     <div className="w-65 flex-shrink-0 ">
                       <div className="sticky top-4">
-                        <Card className="border-0 shadow-lg bg-white p-0">
+                        <Card className="border-0 shadow-lg bg-white p-0 hover:shadow-xl transition-shadow duration-300">
                           <CardContent className="p-6">
                             <div className="flex items-center gap-2 mb-4">
                               <Briefcase className="w-5 h-5 text-blue-600" />
@@ -429,8 +491,8 @@ export default function ApplicationPanel() {
                   {/* Main Content */}
                   <div className="flex-1 space-y-6">
                     {/* Filters */}
-                    <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-                      <CardContent className="p-4">
+                    <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow duration-300">
+                      <CardContent className="p-6">
                         <div className="flex flex-col space-y-4">
                           {/* Job Filter */}
                           <div>
@@ -457,21 +519,21 @@ export default function ApplicationPanel() {
                             <TabsList className="grid grid-cols-3 w-full bg-gray-100 h-12">
                               <TabsTrigger
                                 value="all"
-                                className="data-[state=active]:bg-white data-[state=active]:shadow-md"
+                                className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md transition-all duration-200"
                               >
                                 <FileText className="w-4 h-4 mr-2" />
                                 Бүгд ({filteredApplications.length})
                               </TabsTrigger>
                               <TabsTrigger
                                 value="shortlisted"
-                                className="data-[state=active]:bg-white data-[state=active]:shadow-md"
+                                className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md transition-all duration-200"
                               >
                                 <CheckCircle className="w-4 h-4 mr-2" />
                                 Шигшигдсэн ({filteredApplications.filter((a) => a.status === "shortlisted").length})
                               </TabsTrigger>
                               <TabsTrigger
                                 value="pending"
-                                className="data-[state=active]:bg-white data-[state=active]:shadow-md"
+                                className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md transition-all duration-200"
                               >
                                 <Clock className="w-4 h-4 mr-2" />
                                 Хүлээгдэж байгаа ({filteredApplications.filter((a) => a.status === "pending").length})
@@ -480,25 +542,38 @@ export default function ApplicationPanel() {
                           </Tabs>
 
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                id="bookmarked-only"
-                                checked={bookmarkedOnly}
-                                onChange={() => setBookmarkedOnly(!bookmarkedOnly)}
-                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              <label
-                                htmlFor="bookmarked-only"
-                                className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                            <div className="flex items-center space-x-4">
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id="bookmarked-only"
+                                  checked={bookmarkedOnly}
+                                  onChange={() => setBookmarkedOnly(!bookmarkedOnly)}
+                                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <label
+                                  htmlFor="bookmarked-only"
+                                  className="flex items-center gap-2 text-sm font-medium text-gray-700"
+                                >
+                                  {bookmarkedOnly ? (
+                                    <BookmarkCheck className="w-4 h-4 text-blue-500 fill-blue-500" />
+                                  ) : (
+                                    <Bookmark className="w-4 h-4 text-gray-400" />
+                                  )}
+                                  Зөвхөн bookmark хийсэн
+                                </label>
+                              </div>
+                              
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={recalculateMatchPercentages}
+                                disabled={isRecalculating}
+                                className="flex items-center gap-2"
                               >
-                                {bookmarkedOnly ? (
-                                  <BookmarkCheck className="w-4 h-4 text-blue-500 fill-blue-500" />
-                                ) : (
-                                  <Bookmark className="w-4 h-4 text-gray-400" />
-                                )}
-                                Зөвхөн bookmark хийсэн
-                              </label>
+                                <RefreshCw className={`w-4 h-4 ${isRecalculating ? 'animate-spin' : ''}`} />
+                                Тохирол тооцоолох
+                              </Button>
                             </div>
 
                             <button
@@ -516,7 +591,10 @@ export default function ApplicationPanel() {
                     {/* Application List */}
                     {isLoading ? (
                       <div className="flex justify-center items-center h-64">
-                        <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
+                        <div className="text-center">
+                          <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
+                          <p className="text-gray-600">Өргөдлүүдийг ачаалж байна...</p>
+                        </div>
                       </div>
                     ) : filteredApplications.length > 0 ? (
                       <div className="space-y-4">
@@ -584,7 +662,9 @@ export default function ApplicationPanel() {
                                   >
                                     <div className="flex items-center gap-1">
                                       <TrendingUp className="w-4 h-4" />
-                                      {application.matchPercentage}% тохирол
+                                      {application.matchPercentage !== undefined && application.matchPercentage !== null 
+                                        ? `${application.matchPercentage}% тохирол`
+                                        : "0% тохирол"}
                                     </div>
                                   </div>
 
@@ -629,7 +709,7 @@ export default function ApplicationPanel() {
                         ))}
                       </div>
                     ) : (
-                      <Card className="border-0 shadow-md">
+                      <Card className="border-0 shadow-lg bg-white">
                         <CardContent className="text-center py-16">
                           <AlertCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                           <p className="text-gray-600 mb-4">Ямар ч аппликейшн олдсонгүй</p>
@@ -653,8 +733,8 @@ export default function ApplicationPanel() {
               {/* Jobs Tab */}
               <TabsContent value="jobs" className="space-y-6">
                 {/* Job Creation Form */}
-                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-                  <CardContent className="p-6">
+                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow duration-300">
+                  <CardContent className="p-8">
                     <div className="flex justify-between items-center mb-4">
                       <h2 className="text-lg font-semibold">
                         {editingJobId ? "Ажлын байр засах" : "Шинэ ажлын байр нэмэх"}
@@ -746,15 +826,16 @@ export default function ApplicationPanel() {
                 </Card>
 
                 {/* Jobs List */}
-                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-                  <CardContent className="p-6">
+                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow duration-300">
+                  <CardContent className="p-8">
                     <h2 className="text-lg font-semibold mb-4">Ажлын байрууд</h2>
                     {jobs.length > 0 ? (
                       <div className="space-y-4">
-                        {jobs.map((job) => (
+                        {jobs.map((job, index) => (
                           <div
                             key={job._id}
-                            className="border border-gray-200 rounded-xl p-5 hover:shadow-lg transition-all duration-300 bg-white"
+                            className="border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:scale-[1.01] transition-all duration-300 bg-white animate-fade-in-up"
+                            style={{animationDelay: `${0.1 + index * 0.05}s`}}
                           >
                             <div className="flex justify-between items-start">
                               <div className="flex-1">
@@ -805,7 +886,6 @@ export default function ApplicationPanel() {
                 </Card>
               </TabsContent>
             </Tabs>
-          </div>
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import * as pdfjsLib from "pdfjs-dist";
 import Tesseract from "tesseract.js";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +25,8 @@ import { Job } from "@/server/types";
 import { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { GlobalWorkerOptions } from "pdfjs-dist";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 
 const cleanText = (text: string): string => {
   return text
@@ -42,8 +43,8 @@ const isTextGarbled = (text: string): boolean => {
 
 const pdfToImages = async (pdfUrl: string): Promise<string[]> => {
   try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
-
+    // PDF.js workerSrc-г нэг удаа тохируулах
+    GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
     const pdf = await pdfjsLib.getDocument({
       url: pdfUrl,
       cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/cmaps/",
@@ -56,7 +57,7 @@ const pdfToImages = async (pdfUrl: string): Promise<string[]> => {
 
     for (let currentPage = 1; currentPage <= totalPageCount; currentPage++) {
       const page = await pdf.getPage(currentPage);
-      const viewport = page.getViewport({ scale: 1.0 });
+      const viewport = page.getViewport({ scale: 2.0 });
 
       // Браузерын canvas элемент үүсгэх
       const canvas = document.createElement("canvas");

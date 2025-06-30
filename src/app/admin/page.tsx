@@ -17,6 +17,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export interface Application {
   _id: string;
@@ -68,6 +74,13 @@ export default function ApplicationPanel() {
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [selectedCvUrl, setSelectedCvUrl] = useState<string | null>(null);
+  const [isCvModalOpen, setIsCvModalOpen] = useState(false);
+
+  const handleViewCv = (cvUrl: string) => {
+    setSelectedCvUrl(cvUrl);
+    setIsCvModalOpen(true);
+  };
 
   const fetchApplications = async () => {
     setIsLoading(true);
@@ -75,13 +88,13 @@ export default function ApplicationPanel() {
       const res = await fetch("/api/applications");
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to fetch applications");
+        throw new Error(errorData.message || "Аппликейшн татахад алдаа гарлаа");
       }
       const data = await res.json();
-      console.log("Fetched applications:", data.data); // Debug
+      console.log("Аппликейшн татагдсан:", data.data); // Debug
       setApplications(data.data || []);
     } catch (error) {
-      console.error("Fetch error:", error); // Debug
+      console.error("Fetch алдаа:", error); // Debug
       toast.error("Аппликейшн ачаалахад алдаа гарлаа");
     } finally {
       setIsLoading(false);
@@ -93,7 +106,7 @@ export default function ApplicationPanel() {
     try {
       const application = applications.find((app) => app._id === id);
       if (!application) {
-        throw new Error("Application not found in state");
+        throw new Error("Аппликейшн олдсонгүй");
       }
 
       const newBookmarkStatus = !application.bookmarked;
@@ -109,11 +122,12 @@ export default function ApplicationPanel() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update bookmark");
+        throw new Error(
+          errorData.message || "Bookmark шинэчлэхэд алдаа гарлаа"
+        );
       }
 
       const data = await res.json();
-      console.log("Updated application from server:", data.data); // Debug
       setApplications((prev) =>
         prev.map((app) => (app._id === id ? data.data : app))
       );
@@ -121,50 +135,9 @@ export default function ApplicationPanel() {
         data.data.bookmarked ? "Bookmark хийгдлээ" : "Bookmark цуцлагдлаа"
       );
     } catch (error) {
-      console.error("Bookmark error:", error); // Debug
+      console.error("Bookmark алдаа:", error); // Debug
       toast.error(
         error instanceof Error ? error.message : "Bookmark солиход алдаа гарлаа"
-      );
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const updateStatus = async (id: string) => {
-    setUpdatingId(id);
-    try {
-      const application = applications.find((app) => app._id === id);
-      if (!application) {
-        throw new Error("Application not found in state");
-      }
-
-      const newStatus =
-        application.status === "shortlisted" ? "pending" : "shortlisted";
-      console.log("Updating status for ID:", id, "to:", newStatus); // Debug
-
-      const res = await fetch(`/api/applications/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update status");
-      }
-
-      const data = await res.json();
-      console.log("Updated application from server:", data.data); // Debug
-      setApplications((prev) =>
-        prev.map((app) => (app._id === id ? data.data : app))
-      );
-      toast.success(`Статус ${newStatus} болголоо`);
-    } catch (error) {
-      console.error("Status update error:", error); // Debug
-      toast.error(
-        error instanceof Error ? error.message : "Статус солиход алдаа гарлаа"
       );
     } finally {
       setUpdatingId(null);
@@ -193,6 +166,33 @@ export default function ApplicationPanel() {
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      <Dialog open={isCvModalOpen} onOpenChange={setIsCvModalOpen}>
+        <DialogContent className="min-w-[40vw] min-h-[70vh] overflow-auto m-0">
+          <DialogHeader className="">
+            <DialogTitle className="flex justify-between items-center"></DialogTitle>
+          </DialogHeader>
+          {selectedCvUrl && (
+            <div className="-mt-[30px]">
+              {selectedCvUrl.endsWith(".pdf") ? (
+                <embed
+                  src={selectedCvUrl}
+                  type="application/pdf"
+                  width="100%"
+                  height="600px"
+                  className=""
+                />
+              ) : (
+                <img
+                  src={selectedCvUrl}
+                  alt="CV Preview"
+                  className="w-full h-full object-contain"
+                />
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm p-4">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -226,7 +226,7 @@ export default function ApplicationPanel() {
                   className="data-[state=active]:bg-white data-[state=active]:shadow-md"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  Shortlisted (
+                  Шигшигдсэн (
                   {
                     applications.filter((a) => a.status === "shortlisted")
                       .length
@@ -271,7 +271,7 @@ export default function ApplicationPanel() {
                 className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
               >
                 <Calendar className="w-4 h-4" />
-                {sortOrder === "newest" ? "Newest first" : "Oldest first"}
+                {sortOrder === "newest" ? "Шинэ эхэнд" : "Хуучин эхэнд"}
               </button>
             </div>
           </div>
@@ -325,11 +325,11 @@ export default function ApplicationPanel() {
                   <div className="flex items-center gap-4 text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      Applied {formatDate(application.createdAt)}
+                      Илгээсэн {formatDate(application.createdAt)}
                     </div>
                     <div className="flex items-center gap-1">
                       <FileText className="w-4 h-4" />
-                      CV Available
+                      CV боломжтой
                     </div>
                   </div>
                 </div>
@@ -344,7 +344,7 @@ export default function ApplicationPanel() {
                   >
                     <div className="flex items-center gap-1">
                       <TrendingUp className="w-4 h-4" />
-                      {application.matchPercentage}% match
+                      {application.matchPercentage}% тохирол
                     </div>
                   </div>
 
@@ -377,36 +377,11 @@ export default function ApplicationPanel() {
                         <Bookmark className="w-4 h-4" />
                       )}
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors">
+                    <button
+                      onClick={() => handleViewCv(application.cvUrl)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                    >
                       <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => window.open(application.cvUrl, "_blank")}
-                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
-                      title="View Original CV"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Status actions */}
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => updateStatus(application._id)}
-                      disabled={updatingId === application._id}
-                      className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                        application.status === "pending"
-                          ? "bg-green-600 text-white hover:bg-green-700"
-                          : "bg-gray-600 text-white hover:bg-gray-700"
-                      }`}
-                    >
-                      {updatingId === application._id ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : application.status === "pending" ? (
-                        "Shortlist"
-                      ) : (
-                        "Unlist"
-                      )}
                     </button>
                   </div>
                 </div>
@@ -415,7 +390,7 @@ export default function ApplicationPanel() {
           ))}
         </div>
       ) : (
-        <Card className="border-0 shadow-md">
+        <Card className="border-0 shadow-md max-w-4xl m-auto">
           <CardContent className="text-center py-16">
             <AlertCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
             <p className="text-gray-600 mb-4">Ямар ч аппликейшн олдсонгүй</p>

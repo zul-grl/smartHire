@@ -1,9 +1,9 @@
 import { connectMongoDb } from "@/server/lib/mongodb";
 import { ApplicationModel, JobModel } from "@/server/models";
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 type AiResult = {
   matchPercentage: number;
@@ -16,7 +16,10 @@ type AiResult = {
 function extractAiSummary(content: string) {
   try {
     console.log("Raw AI content:", content.substring(0, 500));
-    const parsed = JSON.parse(content);
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/);
+    const jsonString = jsonMatch ? jsonMatch[1].trim() : content;
+    const parsed = JSON.parse(jsonString);
+
     if (
       !parsed.matchPercentage ||
       !Array.isArray(parsed.matchedSkills) ||
@@ -28,7 +31,7 @@ function extractAiSummary(content: string) {
         "JSON формат буруу: matchPercentage, matchedSkills, summary, firstName, lastName талбарууд шаардлагатай."
       );
     }
-    console.log("Parsed AI summary:", parsed); // Parsed утгыг лог хийх
+    console.log("Parsed AI summary:", parsed);
     return parsed;
   } catch (error) {
     console.error("JSON parse алдаа:", error);
@@ -44,7 +47,6 @@ function extractAiSummary(content: string) {
   }
 }
 
-// Текстийг хуваах функц
 const chunkText = (text: string, maxLength: number): string[] => {
   const chunks: string[] = [];
   for (let i = 0; i < text.length; i += maxLength) {
@@ -52,6 +54,21 @@ const chunkText = (text: string, maxLength: number): string[] => {
   }
   return chunks;
 };
+
+// Gemini response авах функц
+async function getGeminiResponse(prompt: string) {
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash-latest",
+    });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+  } catch (error) {
+    console.error("Gemini AI алдаа:", error);
+    return null;
+  }
+}
 
 export const POST = async (req: NextRequest) => {
   try {
@@ -69,7 +86,6 @@ export const POST = async (req: NextRequest) => {
       );
     }
 
-    // cvText-ийн кодчиллыг шалгах
     console.log("Received cvText:", cvText.substring(0, 500));
 
     const job = await JobModel.findById(jobId);
@@ -80,58 +96,54 @@ export const POST = async (req: NextRequest) => {
       );
     }
 
-    // CV текстийг хуваах
     const chunks = chunkText(cvText, 20000);
     const aiResults: AiResult[] = [];
 
     for (const chunk of chunks) {
       const prompt = `
-CV текст болон ажлын шаардлагыг уншаад, хэрхэн нийцэж байгааг шинжил. Дараах зааврыг тодорхой дага:
+Таны үүрэг: Доорх CV текст болон ажлын шаардлагыг мэргэжлийн түвшинд шинжилж, дараах даалгаврыг биелүүлнэ үү:
 
-1. **Хэлний онцлог**: 
-   - CV текст нь монгол (кирилл) болон англи хэлний холимог байна. Монгол хэлний нэр (жишээ нь, "Тодхүү", "Төгөлдөр", "Бат-Эрдэнэ") болон тусгай үсэг ("ү", "ө")-ийг зөв таньж, дүрмийн алдаа гаргахгүйгээр боловсруул (жишээ нь, "ур чадвартай", "туршлагатай" гэдгийг зөв бич).
-   - Техникийн нэр томьёог (жишээ нь, "JavaScript", "Next.js", "GraphQL") яг хэвээр хадгал.
-2. **Нэр, овог ялгах**:
-   - CV-ээс ирүүлэгчийн нэр (жишээ нь, "Тодхүү", "Төгөлдөр") болон овог (жишээ нь, "Зоригтбаатар", "Бат")-ыг тодорхой ялгаж, JSON хариунд "firstName" болон "lastName" талбаруудад оруул.
-   - Хэрвээ нэр, овог тодорхойгүй бол "firstName": "", "lastName": "" гэж буцаа.
-3. **Туршлага ба төсөл**: 
-   - CV-д дурдагдсан туршлагын хугацаа (жишээ нь, "1+ жил", "8 сар"), төслүүд (жишээ нь, "Vibe Store", "Tinder Clone"), онцлох шийдлүүд (жишээ нь, "бодит цагийн чат", "QPay төлбөрийн систем")-ийг тодорхой илрүүлж, summary-д оруул.
-4. **Ур чадварын харьцуулалт**: 
-   - Ажлын шаардлага болон CV-ийн ур чадваруудыг (жишээ нь, "ReactJS ахисан түвшний мэдлэг", "NextJS App Router туршлага") нарийвчлан харьцуулж, нийцсэн ур чадваруудыг жагсаа.
-   - Туршлагын хугацааг (жишээ нь, "1+ жил туршлага") ур чадвар болгон оруул.
-5. **Товч тайлбар**: 
-   - Summary-г товч, тодорхой бич. CV-ийн гол давуу тал (туршлага, төсөл, ур чадвар), ажлын шаардлагад хэрхэн нийцэж буйг онцол.
-   - Монгол хэлний дүрмийг зөв ашигла (жишээ нь, "туршлагатай", "ур чадвартай").
-6. **JSON формат**: 
-   - Хариуг зөв JSON хэлбэрээр гарга. matchPercentage нь 0-100 хооронд, matchedSkills нь массив, summary нь товч текст, firstName болон lastName нь нэр, овог байна:
+1. Монгол (кирилл) болон англи хэлний холимог текстэд ажиллана. Монгол нэр, овог, тусгай үсэг ("ү", "ө", "ё" гэх мэт)-ийг зөв бичнэ. Техникийн нэр томьёог яг хэвээр хадгална.
+2. CV-ээс нэр болон овог ялгаж авч "firstName" болон "lastName" талбарт оруулна. Хэрэв тодорхойгүй бол хоосон утга ("") өгнө.
+3. Туршлагын хугацаа, төсөл, онцлох шийдлийг олж гаргана.
+4. Ажлын шаардлага болон CV-д дурдагдсан ур чадваруудыг харьцуулж нийцсэн ур чадваруудыг жагсаана.
+5. Товч, ойлгомжтой summary-г монгол хэлний дүрмийн алдаа багатай бичнэ.
+6. Зөвхөн дараах JSON бүтэцтэй цэвэр JSON хариу гаргана:
+
 {
   "matchPercentage": [0-100],
-  "matchedSkills": ["ур чадвар1", "ур чадвар2", ...],
-  "summary": "Товч тайлбар: CV-ийн гол давуу тал ба ажлын шаардлагад хэрхэн нийцсэн тухай...",
+  "matchedSkills": ["ур чадвар1", "ур чадвар2", "..."],
+  "summary": "Товч тайлбар: CV-ийн гол давуу тал ба ажлын шаардлагад нийцсэн тухай...",
   "firstName": "Нэр",
   "lastName": "Овог"
 }
+
+---
 
 CV текст:
 ${chunk}
 
 Ажлын шаардлага:
 ${job.requirements.join(", ")}
+
+---
+
+Зөвхөн цэвэр, parse хийхэд бэлэн JSON хариу буцаана уу. Бусад тайлбар, текст, markdown, код блок битгий бичээрэй.
 `;
 
-      const aiResponse = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-      });
+      const aiContent = await getGeminiResponse(prompt);
 
-      const aiContent = aiResponse.choices[0].message?.content ?? "";
+      if (!aiContent) {
+        console.error("Gemini AI response хоосон байна.");
+        continue;
+      }
+
       console.log("AI response:", aiContent);
       const result = extractAiSummary(aiContent);
       console.log("ai result", result);
       aiResults.push(result);
     }
 
-    // AI-ийн үр дүнг нэгтгэх (давхардлыг арилгах)
     const uniqueSkills = Array.from(
       new Set(aiResults.flatMap((r) => r.matchedSkills))
     );
@@ -141,12 +153,12 @@ ${job.requirements.join(", ")}
       summary: aiResults
         .map((r) => r.summary)
         .filter((s, i, arr) => arr.indexOf(s) === i)
-        .join(" "), // Давхардсан summary-г арилгах
-      firstName: aiResults[0]?.firstName || "", // Эхний chunk-аас нэр авна
+        .join(" "),
+      firstName: aiResults[0]?.firstName || "",
       lastName: aiResults[0]?.lastName || "",
     };
 
-    console.log("Final AI result before saving:", finalResult); // Хадгалахын өмнө finalResult-ыг лог хийх
+    console.log("Final AI result before saving:", finalResult);
 
     const status =
       finalResult.matchPercentage >= 70 ? "shortlisted" : "pending";
@@ -167,7 +179,7 @@ ${job.requirements.join(", ")}
       status,
     });
 
-    console.log("Saved application:", application); // Хадгалсан бичлэгийг лог хийх
+    console.log("Saved application:", application);
 
     return NextResponse.json(
       { success: true, data: application },

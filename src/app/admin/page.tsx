@@ -13,7 +13,6 @@ import {
   Calendar,
   TrendingUp,
   Eye,
-  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import Image from "next/image";
 
 export interface Application {
   _id: string;
@@ -182,7 +182,9 @@ export default function ApplicationPanel() {
                   className=""
                 />
               ) : (
-                <img
+                <Image
+                  width={1000}
+                  height={600}
                   src={selectedCvUrl}
                   alt="CV Preview"
                   className="w-full h-full object-contain"

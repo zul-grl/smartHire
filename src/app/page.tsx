@@ -137,8 +137,7 @@ const extractTextWithOCR = async (pdfUrl: string): Promise<string> => {
     return fullText;
   } catch (error) {
     throw new Error(
-      `OCR ашиглан текст гаргаж чадсангүй: ${
-        error instanceof Error ? error.message : "Unknown error"
+      `OCR ашиглан текст гаргаж чадсангүй: ${error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -169,7 +168,7 @@ export default function Home() {
       try {
         const { data } = await axios.get("/api/jobs");
         setAvailableJobs(data.data);
-      } catch (err) {
+      } catch {
         setErrorMessage("Ажлын байрны мэдээлэл татаж чадсангүй.");
       }
     };
@@ -209,8 +208,7 @@ export default function Home() {
       return data.secure_url;
     } catch (err) {
       setErrorMessage(
-        `Файлыг хуулахад алдаа гарлаа: ${
-          err instanceof Error ? err.message : "Unknown error"
+        `Файлыг хуулахад алдаа гарлаа: ${err instanceof Error ? err.message : "Unknown error"
         }`
       );
       return null;
@@ -256,8 +254,7 @@ export default function Home() {
       }
     } catch (err) {
       setErrorMessage(
-        `Өргөдөл илгээхэд алдаа гарлаа: ${
-          err instanceof Error ? err.message : "Unknown error"
+        `Өргөдөл илгээхэд алдаа гарлаа: ${err instanceof Error ? err.message : "Unknown error"
         }`
       );
     } finally {

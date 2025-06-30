@@ -188,21 +188,27 @@ ${job.requirements.join(", ")}
   }
 };
 
-export const GET = async () => {
+export async function GET() {
   try {
     await connectMongoDb();
-    const applications = await ApplicationModel.find().sort({ createdAt: -1 });
-    return NextResponse.json({ success: true, data: applications });
+
+    const applications = await ApplicationModel.find({})
+      .populate("jobId", "title company description requirements")
+      .sort({ createdAt: -1 })
+      .lean();
+    return NextResponse.json({
+      success: true,
+      data: applications,
+    });
   } catch (error) {
-    console.error("Error fetching applications:", error);
+    console.error("Applications fetch error:", error);
     return NextResponse.json(
       {
         success: false,
-        message: `Серверийн алдаа: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+        message: "Failed to fetch applications",
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
   }
-};
+}

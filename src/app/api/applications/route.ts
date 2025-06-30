@@ -15,7 +15,6 @@ type AiResult = {
 
 function extractAiSummary(content: string) {
   try {
-    console.log("Raw AI content:", content.substring(0, 500));
     const jsonMatch = content.match(/```json\s*([\s\S]*?)```/);
     const jsonString = jsonMatch ? jsonMatch[1].trim() : content;
     const parsed = JSON.parse(jsonString);
@@ -31,10 +30,8 @@ function extractAiSummary(content: string) {
         "JSON формат буруу: matchPercentage, matchedSkills, summary, firstName, lastName талбарууд шаардлагатай."
       );
     }
-    console.log("Parsed AI summary:", parsed);
     return parsed;
   } catch (error) {
-    console.error("JSON parse алдаа:", error);
     return {
       matchPercentage: 0,
       matchedSkills: [],
@@ -86,8 +83,6 @@ export const POST = async (req: NextRequest) => {
       );
     }
 
-    console.log("Received cvText:", cvText.substring(0, 500));
-
     const job = await JobModel.findById(jobId);
     if (!job) {
       return NextResponse.json(
@@ -138,9 +133,7 @@ ${job.requirements.join(", ")}
         continue;
       }
 
-      console.log("AI response:", aiContent);
       const result = extractAiSummary(aiContent);
-      console.log("ai result", result);
       aiResults.push(result);
     }
 
@@ -157,8 +150,6 @@ ${job.requirements.join(", ")}
       firstName: aiResults[0]?.firstName || "",
       lastName: aiResults[0]?.lastName || "",
     };
-
-    console.log("Final AI result before saving:", finalResult);
 
     const status =
       finalResult.matchPercentage >= 70 ? "shortlisted" : "pending";
@@ -178,8 +169,6 @@ ${job.requirements.join(", ")}
       },
       status,
     });
-
-    console.log("Saved application:", application);
 
     return NextResponse.json(
       { success: true, data: application },

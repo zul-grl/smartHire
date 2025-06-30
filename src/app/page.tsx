@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Building2, FileText, Loader2 } from "lucide-react";
+import { CheckCircle, Building2, Loader2 } from "lucide-react";
 import axios from "axios";
 import CloudinaryUpload from "@/components/CloudinaryUpload";
 import { Job } from "@/server/types";
@@ -31,8 +31,8 @@ import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 const cleanText = (text: string): string => {
   return text
     .replace(/[^\w\s.,!?@а-яА-ЯөүӨҮ]/g, "")
-    .replace(/\s+/g, " ") // Давхардсан зай арилгах
-    .replace(/(\w)\s+\.\s+(\w)/g, "$1.$2") // "Ne x t. j s" → "Next.js"
+    .replace(/\s+/g, " ")
+    .replace(/(\w)\s+\.\s+(\w)/g, "$1.$2")
     .trim();
 };
 const isTextGarbled = (text: string): boolean => {
@@ -43,7 +43,6 @@ const isTextGarbled = (text: string): boolean => {
 
 const pdfToImages = async (pdfUrl: string): Promise<string[]> => {
   try {
-    // PDF.js workerSrc-г нэг удаа тохируулах
     GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
     const pdf = await pdfjsLib.getDocument({
       url: pdfUrl,
@@ -58,8 +57,6 @@ const pdfToImages = async (pdfUrl: string): Promise<string[]> => {
     for (let currentPage = 1; currentPage <= totalPageCount; currentPage++) {
       const page = await pdf.getPage(currentPage);
       const viewport = page.getViewport({ scale: 2.0 });
-
-      // Браузерын canvas элемент үүсгэх
       const canvas = document.createElement("canvas");
       canvas.height = viewport.height;
       canvas.width = viewport.width;
@@ -80,7 +77,6 @@ const pdfToImages = async (pdfUrl: string): Promise<string[]> => {
 
     return imageUrls;
   } catch (error) {
-    console.error("PDF-ээс зураг гаргахад алдаа:", error);
     throw error;
   }
 };
@@ -116,26 +112,21 @@ const extractTextFromPDF = async (pdfUrl: string): Promise<string> => {
 
     const fullText = cleanText(texts.join("\n\n"));
     if (!fullText) {
-      throw new Error("PDF-ээс текст олдсонгүй.");
+      // throw new Error("PDF-ээс текст олдсонгүй.");
     }
-    console.log("Extracted text (pdf.js):", fullText.substring(0, 500));
     return fullText;
   } catch (error) {
-    console.error("PDF.js текст гаргахад алдаа:", error);
     throw error;
   }
 };
 
-// OCR ашиглан текст гаргах функц (Tesseract.js)
 const extractTextWithOCR = async (pdfUrl: string): Promise<string> => {
   try {
     const imageUrls = await pdfToImages(pdfUrl);
     const texts: string[] = [];
 
     for (const imageUrl of imageUrls) {
-      const result = await Tesseract.recognize(imageUrl, "eng+mon", {
-        logger: (m) => console.log(m),
-      });
+      const result = await Tesseract.recognize(imageUrl, "eng+mon");
       texts.push(cleanText(result.data.text));
     }
 
@@ -143,10 +134,8 @@ const extractTextWithOCR = async (pdfUrl: string): Promise<string> => {
     if (!fullText) {
       throw new Error("OCR-ээс текст олдсонгүй.");
     }
-    console.log("Extracted text (OCR):", fullText.substring(0, 500));
     return fullText;
   } catch (error) {
-    console.error("OCR алдаа:", error);
     throw new Error(
       `OCR ашиглан текст гаргаж чадсангүй: ${
         error instanceof Error ? error.message : "Unknown error"
@@ -154,16 +143,15 @@ const extractTextWithOCR = async (pdfUrl: string): Promise<string> => {
     );
   }
 };
+
 const extractText = async (pdfUrl: string): Promise<string> => {
   try {
     const text = await extractTextFromPDF(pdfUrl);
     if (isTextGarbled(text)) {
-      console.log("pdf.js текст эмх замбараагүй, OCR-г оролдож байна...");
       return await extractTextWithOCR(pdfUrl);
     }
     return text;
   } catch {
-    console.log("pdf.js амжилтгүй, OCR-г оролдож байна...");
     return await extractTextWithOCR(pdfUrl);
   }
 };
@@ -173,8 +161,6 @@ export default function Home() {
   const [availableJobs, setAvailableJobs] = useState<Job[] | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [extractedText, setExtractedText] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const router = useRouter();
 
@@ -184,7 +170,6 @@ export default function Home() {
         const { data } = await axios.get("/api/jobs");
         setAvailableJobs(data.data);
       } catch (err) {
-        console.error("Failed to fetch jobs:", err);
         setErrorMessage("Ажлын байрны мэдээлэл татаж чадсангүй.");
       }
     };
@@ -193,7 +178,6 @@ export default function Home() {
 
   const handleFile = (file: File) => {
     setFile(file);
-    setExtractedText("");
     setErrorMessage("");
   };
 
@@ -224,7 +208,6 @@ export default function Home() {
       }
       return data.secure_url;
     } catch (err) {
-      console.error("Cloudinary upload error:", err);
       setErrorMessage(
         `Файлыг хуулахад алдаа гарлаа: ${
           err instanceof Error ? err.message : "Unknown error"
@@ -250,10 +233,7 @@ export default function Home() {
         return;
       }
 
-      setIsExtracting(true);
       const extractedText = await extractText(uploadedUrl);
-      setExtractedText(extractedText);
-      setIsExtracting(false);
 
       const formData = new FormData();
       formData.append("cvUrl", uploadedUrl);
@@ -269,14 +249,12 @@ export default function Home() {
         router.push("/admin");
         setSelectedJob("");
         setFile(null);
-        setExtractedText("");
       } else {
         setErrorMessage(
           "Алдаа гарлаа: " + (res.data.message || "Дахин оролдоно уу.")
         );
       }
     } catch (err) {
-      console.error("Application submission error:", err);
       setErrorMessage(
         `Өргөдөл илгээхэд алдаа гарлаа: ${
           err instanceof Error ? err.message : "Unknown error"
@@ -284,7 +262,6 @@ export default function Home() {
       );
     } finally {
       setIsSubmitting(false);
-      setIsExtracting(false);
     }
   };
 
@@ -353,39 +330,9 @@ export default function Home() {
             </CardContent>
           </Card>
           <CloudinaryUpload handleFile={handleFile} />
-
-          {extractedText && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Гаргаж авсан текст
-                </CardTitle>
-                <CardDescription>
-                  PDF файлаас гаргаж авсан текст ({extractedText.length}{" "}
-                  тэмдэгт)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="max-h-40 overflow-y-auto bg-gray-50 p-3 rounded-md text-sm">
-                  {extractedText.substring(0, 500)}
-                  {extractedText.length > 500 && "..."}
-                </div>
-              </CardContent>
-            </Card>
-          )}
           <div className="flex justify-end mt-4">
-            <Button
-              type="submit"
-              size="lg"
-              disabled={!selectedJob || !file || isSubmitting || isExtracting}
-            >
-              {isExtracting ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Текст гаргаж байна...
-                </>
-              ) : isSubmitting ? (
+            <Button type="submit" size="lg" disabled={!selectedJob || !file}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                   Илгээж байна...

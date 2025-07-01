@@ -97,7 +97,9 @@ export default function ApplicationPanel() {
     "all" | "shortlisted" | "pending"
   >("all");
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [sortOrder, setSortOrder] = useState<
+    "newest" | "oldest" | "matchHigh" | "matchLow"
+  >("newest");
   const [selectedJobId, setSelectedJobId] = useState<string>("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedCvUrl, setSelectedCvUrl] = useState<string | null>(null);
@@ -111,7 +113,6 @@ export default function ApplicationPanel() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
-
   const handleViewCv = (cvUrl: string) => {
     setSelectedCvUrl(cvUrl);
     setIsCvModalOpen(true);
@@ -201,7 +202,6 @@ export default function ApplicationPanel() {
     .filter((app) => {
       if (statusFilter !== "all" && app.status !== statusFilter) return false;
       if (bookmarkedOnly && !app.bookmarked) return false;
-      // Fix: Check if jobId exists and has _id property before comparing
       if (
         selectedJobId !== "all" &&
         (!app.jobId || app.jobId._id !== selectedJobId)
@@ -210,14 +210,23 @@ export default function ApplicationPanel() {
       return true;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+      if (sortOrder === "newest") {
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      } else if (sortOrder === "oldest") {
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      } else if (sortOrder === "matchHigh") {
+        return (b.matchPercentage || 0) - (a.matchPercentage || 0); // High to Low
+      } else {
+        return (a.matchPercentage || 0) - (b.matchPercentage || 0); // Low to High
+      }
     });
 
   const selectedJob = jobs.find((job) => job._id === selectedJobId);
 
-  // Get unique jobs from applications - with null check
   const getJobsFromApplications = () => {
     const uniqueJobs = new Map();
     applications.forEach((app) => {
@@ -343,7 +352,30 @@ export default function ApplicationPanel() {
       setIsSubmitting(false);
     }
   };
+  const handleDeleteApplication = async (id: string) => {
+    if (!confirm("Энэ аппликейшнийг устгахдаа итгэлтэй байна уу?")) {
+      return;
+    }
 
+    try {
+      const res = await fetch(`/api/applications`, {
+        method: "DELETE",
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        throw new Error("Аппликейшн устгахад алдаа гарлаа");
+      }
+      setApplications((prev) => prev.filter((app) => app._id !== id));
+      toast.success("Аппликейшн амжилттай устгагдлаа");
+    } catch (error) {
+      console.error("Аппликейшн устгах алдаа:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Аппликейшн устгахад алдаа гарлаа"
+      );
+    }
+  };
   useEffect(() => {
     fetchApplications();
     fetchJobs();
@@ -406,7 +438,6 @@ export default function ApplicationPanel() {
         className="space-y-6 animate-fade-in-up max-w-6xl m-auto"
         style={{ animationDelay: "0.3s" }}
       >
-        {/* Main Tabs */}
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
@@ -434,11 +465,8 @@ export default function ApplicationPanel() {
               </Badge>
             </TabsTrigger>
           </TabsList>
-
-          {/* Applications Tab */}
           <TabsContent value="applications" className="space-y-6">
             <div className="flex gap-6">
-              {/* Job Details Sidebar */}
               {selectedJob && (
                 <div className="w-65 flex-shrink-0 ">
                   <div className="sticky top-4">
@@ -590,7 +618,37 @@ export default function ApplicationPanel() {
                             Зөвхөн bookmark хийсэн
                           </label>
                         </div>
-
+                        <button
+                          onClick={() =>
+                            setSortOrder(
+                              sortOrder === "matchHigh"
+                                ? "matchLow"
+                                : sortOrder === "matchLow"
+                                ? "newest"
+                                : "matchHigh"
+                            )
+                          }
+                          className={`p-2 rounded-md transition-colors ${
+                            sortOrder.includes("match")
+                              ? "text-blue-600 bg-blue-50"
+                              : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                          }`}
+                          title={
+                            sortOrder === "matchHigh"
+                              ? "High to Low"
+                              : sortOrder === "matchLow"
+                              ? "Low to High"
+                              : "Sort by match score"
+                          }
+                        >
+                          <TrendingUp
+                            className={`w-4 h-4 ${
+                              sortOrder === "matchLow"
+                                ? "transform rotate-180"
+                                : ""
+                            }`}
+                          />
+                        </button>
                         <button
                           onClick={toggleSortOrder}
                           className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
@@ -604,8 +662,6 @@ export default function ApplicationPanel() {
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Application List */}
                 {isLoading ? (
                   <div className="flex justify-center items-center h-64">
                     <div className="text-center">
@@ -625,7 +681,6 @@ export default function ApplicationPanel() {
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              {/* Job Title */}
                               <div className="mb-3">
                                 <Badge variant="outline" className="text-xs">
                                   {application.jobId?.title || "Unknown Job"}
@@ -633,8 +688,6 @@ export default function ApplicationPanel() {
                                     ` - ${application.jobId.company}`}
                                 </Badge>
                               </div>
-
-                              {/* AI Summary */}
                               <div className="mb-4">
                                 <div className="flex gap-2">
                                   <p className="text-gray-800 font-medium mb-2">
@@ -648,8 +701,6 @@ export default function ApplicationPanel() {
                                   {application.aiSummary.summary}
                                 </p>
                               </div>
-
-                              {/* Skills */}
                               <div className="flex flex-wrap gap-2 mb-4">
                                 {application.matchedSkills.map(
                                   (skill, index) => (
@@ -662,8 +713,6 @@ export default function ApplicationPanel() {
                                   )
                                 )}
                               </div>
-
-                              {/* Meta info */}
                               <div className="flex items-center gap-4 text-sm text-gray-500">
                                 <div className="flex items-center gap-1">
                                   <Calendar className="w-4 h-4" />
@@ -675,10 +724,7 @@ export default function ApplicationPanel() {
                                 </div>
                               </div>
                             </div>
-
-                            {/* Right side controls */}
                             <div className="flex flex-col items-end gap-3 ml-6">
-                              {/* Match percentage */}
                               <div
                                 className={`px-3 py-1 rounded-full text-sm font-semibold ${getMatchColor(
                                   application.matchPercentage
@@ -732,6 +778,14 @@ export default function ApplicationPanel() {
                                 >
                                   <Eye className="w-4 h-4" />
                                 </button>
+                                <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
+                                  <Trash2
+                                    className="w-4 h-4"
+                                    onClick={() =>
+                                      handleDeleteApplication(application._id)
+                                    }
+                                  />
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -762,10 +816,7 @@ export default function ApplicationPanel() {
               </div>
             </div>
           </TabsContent>
-
-          {/* Jobs Tab */}
           <TabsContent value="jobs" className="space-y-6">
-            {/* Job Creation Form */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow duration-300">
               <CardContent className="p-8">
                 <div className="flex justify-between items-center mb-4">
@@ -800,7 +851,6 @@ export default function ApplicationPanel() {
                       className="mt-1 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-
                   <div>
                     <Label htmlFor="description">Тайлбар</Label>
                     <Textarea
@@ -873,8 +923,6 @@ export default function ApplicationPanel() {
                 </form>
               </CardContent>
             </Card>
-
-            {/* Jobs List */}
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardContent className="p-6">
                 <h2 className="text-lg font-semibold mb-4">Ажлын байрууд</h2>

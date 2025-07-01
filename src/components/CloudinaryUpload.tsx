@@ -29,7 +29,7 @@ const FileUpload = ({ handleFile }: Props) => {
     <>
       <label htmlFor="file-input">
         {file ? (
-          <Card className="p-4 flex justify-between items-center">
+          <div className="p-4 flex justify-between bg-card text-card-foreground rounded-xl border py-6 shadow-sm items-center">
             <div>
               <p className="font-semibold">{file.name}</p>
               <p className="text-sm text-gray-500">
@@ -39,7 +39,7 @@ const FileUpload = ({ handleFile }: Props) => {
             <button onClick={handleRemoveFile} type="button">
               <Trash2 className="text-red-500 w-5 h-5" />
             </button>
-          </Card>
+          </div>
         ) : (
           <Card className="p-6 cursor-pointer">
             <CardHeader>

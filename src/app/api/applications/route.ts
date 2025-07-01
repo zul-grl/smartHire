@@ -212,3 +212,39 @@ export async function GET() {
     );
   }
 }
+export const DELETE = async (req: NextRequest) => {
+  try {
+    await connectMongoDb();
+    const { id } = await req.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: "ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const application = await ApplicationModel.findByIdAndDelete(id);
+
+    if (!application) {
+      return NextResponse.json(
+        { success: false, message: "Application not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Application deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete application error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Server error",
+      },
+      { status: 500 }
+    );
+  }
+};

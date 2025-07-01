@@ -1,5 +1,5 @@
 import { connectMongoDb } from "@/server/lib/mongodb";
-import { ApplicationModel, JobModel } from "@/server/models";
+import { ApplicationModel } from "@/server/models";
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -73,10 +73,11 @@ export async function POST() {
     // Check if API key exists
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: "GEMINI_API_KEY is not configured. Please add it to your .env file.",
-          updated: 0 
+        {
+          success: false,
+          message:
+            "GEMINI_API_KEY is not configured. Please add it to your .env file.",
+          updated: 0,
         },
         { status: 500 }
       );
@@ -87,12 +88,12 @@ export async function POST() {
       $or: [
         { matchPercentage: { $exists: false } },
         { matchPercentage: null },
-        { matchPercentage: 0 }
-      ]
+        { matchPercentage: 0 },
+      ],
     }).populate("jobId");
 
     let updatedCount = 0;
-    const errors: any[] = [];
+    const errors: { applicationId: string; error: string }[] = [];
 
     for (const application of applications) {
       try {
@@ -186,7 +187,7 @@ ${job.requirements.join(", ")}
         console.error(`Error updating application ${application._id}:`, error);
         errors.push({
           applicationId: application._id,
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
@@ -196,7 +197,7 @@ ${job.requirements.join(", ")}
       message: `Successfully recalculated ${updatedCount} applications`,
       total: applications.length,
       updated: updatedCount,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error) {
     console.error("Recalculation error:", error);

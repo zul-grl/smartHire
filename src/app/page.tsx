@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle,
   Building2,
@@ -34,7 +33,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GlobalWorkerOptions } from "pdfjs-dist";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
-import { ModeToggle } from "@/components/LightDarkMode";
 
 const cleanText = (text: string): string => {
   return text
@@ -278,18 +276,19 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen">
-      <Card className="rounded-2xl p-6 border mx-10 my-3 shadow-sm">
-        <CardContent className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Building2 className="h-8 w-8 text-blue-600 mr-3" />
-            <div>
-              <h1 className="text-[30px] font-bold">SmartHire</h1>
+    <div className="min-h-screen animate-fade-in-up">
+      <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-3">
+              <Building2 className="h-8 w-8 text-blue-600" />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                SmartHire
+              </h1>
             </div>
           </div>
-          <ModeToggle />
-        </CardContent>
-      </Card>
+        </div>
+      </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {errorMessage && (
@@ -308,7 +307,53 @@ export default function Home() {
             <span>{errorMessage}</span>
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="mb-12 animate-fade-in-up">
+          <div className="flex items-center justify-center">
+            <div className="flex items-center space-x-4 sm:space-x-8">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    selectedJob
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-400"
+                  }`}
+                >
+                  <Briefcase className="h-6 w-6" />
+                </div>
+                <p className="mt-2 text-sm font-medium text-gray-600">
+                  Ажил сонгох
+                </p>
+              </div>
+              <div
+                className={`h-1 w-12 sm:w-24 transition-colors duration-300 ${
+                  file ? "bg-blue-600" : "bg-gray-200"
+                }`}
+              />
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    file
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-400"
+                  }`}
+                >
+                  <FileText className="h-6 w-6" />
+                </div>
+                <p className="mt-2 text-sm font-medium text-gray-600">
+                  CV байршуулах
+                </p>
+              </div>
+              <div className="h-1 w-12 sm:w-24 bg-gray-200" />
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center">
+                  <Send className="h-6 w-6" />
+                </div>
+                <p className="mt-2 text-sm font-medium text-gray-600">Илгээх</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-8 animate-fade-in-up">
           <Card>
             <CardHeader>
               <CardTitle>Ажлын байр сонгох</CardTitle>
@@ -350,8 +395,8 @@ export default function Home() {
             <Button
               type="submit"
               size="lg"
-              variant={"default"}
-              disabled={!selectedJob || !file}
+              disabled={!selectedJob || !file || isSubmitting}
+              className="min-w-[200px] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
             >
               {isSubmitting ? (
                 <>
@@ -360,7 +405,7 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <CheckCircle className="h-5 w-5 mr-2" />
+                  <Send className="h-5 w-5 mr-2" />
                   Өргөдөл илгээх
                 </>
               )}

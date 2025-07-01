@@ -18,7 +18,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Building2, Loader2, Briefcase, FileText, Send } from "lucide-react";
+import {
+  CheckCircle,
+  Building2,
+  Loader2,
+  Briefcase,
+  FileText,
+  Send,
+} from "lucide-react";
 import axios from "axios";
 import CloudinaryUpload from "@/components/CloudinaryUpload";
 import { Job } from "@/server/types";
@@ -27,6 +34,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GlobalWorkerOptions } from "pdfjs-dist";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
+import { ModeToggle } from "@/components/LightDarkMode";
 
 const cleanText = (text: string): string => {
   return text
@@ -137,7 +145,8 @@ const extractTextWithOCR = async (pdfUrl: string): Promise<string> => {
     return fullText;
   } catch (error) {
     throw new Error(
-      `OCR ашиглан текст гаргаж чадсангүй: ${error instanceof Error ? error.message : "Unknown error"
+      `OCR ашиглан текст гаргаж чадсангүй: ${
+        error instanceof Error ? error.message : "Unknown error"
       }`
     );
   }
@@ -208,7 +217,8 @@ export default function Home() {
       return data.secure_url;
     } catch (err) {
       setErrorMessage(
-        `Файлыг хуулахад алдаа гарлаа: ${err instanceof Error ? err.message : "Unknown error"
+        `Файлыг хуулахад алдаа гарлаа: ${
+          err instanceof Error ? err.message : "Unknown error"
         }`
       );
       return null;
@@ -254,7 +264,8 @@ export default function Home() {
       }
     } catch (err) {
       setErrorMessage(
-        `Өргөдөл илгээхэд алдаа гарлаа: ${err instanceof Error ? err.message : "Unknown error"
+        `Өргөдөл илгээхэд алдаа гарлаа: ${
+          err instanceof Error ? err.message : "Unknown error"
         }`
       );
     } finally {
@@ -267,172 +278,93 @@ export default function Home() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Navigation Bar */}
-      <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <Building2 className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                SmartHire
-              </h1>
+    <div className="min-h-screen">
+      <Card className="rounded-2xl p-6 border mx-10 my-3 shadow-sm">
+        <CardContent className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Building2 className="h-8 w-8 text-blue-600 mr-3" />
+            <div>
+              <h1 className="text-[30px] font-bold">SmartHire</h1>
             </div>
           </div>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <header className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 text-white">
-        <div className="absolute inset-0 bg-black/10" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
-          <h1 className="text-3xl sm:text-5xl font-bold mb-4 animate-fade-in-up text-white" style={{animationDelay: '0.1s'}}>
-            Таны ирээдүйн карьер энд эхэлнэ
-          </h1>
-          <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-            SmartHire системээр дамжуулан та өөрийн CV-г илгээж, хүссэн ажлын байрандаа хамгийн хурдан нэгдэх боломжтой
-          </p>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white/10 to-transparent" />
-      </header>
+          <ModeToggle />
+        </CardContent>
+      </Card>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {errorMessage && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-start">
-            <svg className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            <svg
+              className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                clipRule="evenodd"
+              />
             </svg>
             <span>{errorMessage}</span>
           </div>
         )}
-        {/* Progress Indicator */}
-        <div className="mb-12 animate-fade-in-up">
-          <div className="flex items-center justify-center">
-            <div className="flex items-center space-x-4 sm:space-x-8">
-              <div className="flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedJob ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
-                  <Briefcase className="h-6 w-6" />
-                </div>
-                <p className="mt-2 text-sm font-medium text-gray-600">Ажил сонгох</p>
-              </div>
-              <div className={`h-1 w-12 sm:w-24 transition-colors duration-300 ${file ? 'bg-blue-600' : 'bg-gray-200'}`} />
-              <div className="flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${file ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
-                  <FileText className="h-6 w-6" />
-                </div>
-                <p className="mt-2 text-sm font-medium text-gray-600">CV байршуулах</p>
-              </div>
-              <div className="h-1 w-12 sm:w-24 bg-gray-200" />
-              <div className="flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center">
-                  <Send className="h-6 w-6" />
-                </div>
-                <p className="mt-2 text-sm font-medium text-gray-600">Илгээх</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Ажлын байр сонгох</CardTitle>
+              <CardDescription>
+                Та аль ажлын байранд өргөдөл гаргахыг хүсэж байна?
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select value={selectedJob} onValueChange={setSelectedJob}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Ажлын байр сонгох" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableJobs?.map((job: Job) => (
+                    <SelectItem key={job._id} value={job._id}>
+                      {job.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-        <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl mx-auto">
-          {/* Job Selection */}
-          <div className="animate-fade-in-up" style={{animationDelay: '0.1s'}}>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-6 text-gray-800">
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-600 mr-3">
-                1
-              </span>
-              Ажлын байр сонгох
-            </h2>
-            {!availableJobs ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[1, 2, 3].map((i) => (
-                  <Card key={i} className="animate-pulse">
-                    <CardContent className="p-6">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
-                      <div className="h-3 bg-gray-200 rounded w-full mb-2" />
-                      <div className="h-3 bg-gray-200 rounded w-2/3" />
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {availableJobs.map((job: Job, index) => (
-                  <Card
-                    key={job._id}
-                    className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] animate-fade-in-up ${
-                      selectedJob === job._id
-                        ? "ring-2 ring-blue-600 bg-blue-50"
-                        : "hover:border-gray-300"
-                    }`}
-                    style={{animationDelay: `${0.1 + index * 0.05}s`}}
-                    onClick={() => setSelectedJob(job._id)}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-3 gap-2">
-                        <h3 className="font-semibold text-lg text-gray-900 line-clamp-2">
-                          {job.title}
-                        </h3>
-                        {selectedJob === job._id && (
-                          <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-1" />
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {job.requirements.slice(0, 2).map((req, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs px-2 py-0.5">
-                            <span className="truncate max-w-[120px] inline-block">{req}</span>
-                          </Badge>
-                        ))}
-                        {job.requirements.length > 2 && (
-                          <Badge variant="outline" className="text-xs px-2 py-0.5">
-                            +{job.requirements.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* File Upload Section */}
-          <div className="animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-            <CloudinaryUpload handleFile={handleFile} />
-          </div>
-          
-          {/* Submit Section */}
-          <div className="mt-12 animate-fade-in-up" style={{animationDelay: '0.3s'}}>
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-0">
-              <CardContent className="p-8">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      Өргөдөл илгээхэд бэлэн үү?
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Таны өргөдлийг хүлээн авч танд удахгүй хугацаанд хариу өгнө
-                    </p>
+              {selectedJobDetails && (
+                <div className="mt-2 p-4 bg-blue-10 rounded-lg">
+                  <h3 className="font-semibold">{selectedJobDetails.title}</h3>
+                  <div className="grid grid-cols-1">
+                    {selectedJobDetails.requirements.map((req, index) => (
+                      <p key={index} className="mt-3 text-[14px]">
+                        {" "}
+                        - {req}
+                      </p>
+                    ))}
                   </div>
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    disabled={!selectedJob || !file || isSubmitting}
-                    className="min-w-[200px] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        Илгээж байна...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-5 w-5 mr-2" />
-                        Өргөдөл илгээх
-                      </>
-                    )}
-                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </CardContent>
+          </Card>
+          <CloudinaryUpload handleFile={handleFile} />
+          <div className="flex justify-end mt-4">
+            <Button
+              type="submit"
+              size="lg"
+              variant={"default"}
+              disabled={!selectedJob || !file}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Илгээж байна...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  Өргөдөл илгээх
+                </>
+              )}
+            </Button>
           </div>
         </form>
       </div>

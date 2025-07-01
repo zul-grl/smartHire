@@ -17,14 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  CheckCircle,
-  Building2,
-  Loader2,
-  Briefcase,
-  FileText,
-  Send,
-} from "lucide-react";
+import { Building2, Loader2, Briefcase, FileText, Send } from "lucide-react";
 import axios from "axios";
 import CloudinaryUpload from "@/components/CloudinaryUpload";
 import { Job } from "@/server/types";

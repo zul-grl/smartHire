@@ -167,7 +167,7 @@ ${job.requirements.join(", ")}
         };
 
         const status =
-          finalResult.matchPercentage >= 80 ? "shortlisted" : "pending";
+          finalResult.matchPercentage >= 70 ? "shortlisted" : "pending";
 
         // Update the application
         await ApplicationModel.findByIdAndUpdate(application._id, {

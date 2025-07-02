@@ -16,6 +16,10 @@ import {
   Calendar,
   TrendingUp,
   Eye,
+  Building2,
+  ArrowDown,
+  ArrowUp,
+  ArrowDownUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -127,7 +131,7 @@ export default function ApplicationPanel() {
       const data = await res.json();
       setJobs(data.data || []);
     } catch {
-      toast.error("Ажлын байр ачаалахад алдаа гарлаа");
+      toast.error("Ажlын байр ачаалахад алдаа гарлаа");
     }
   };
 
@@ -194,8 +198,13 @@ export default function ApplicationPanel() {
     }
   };
 
-  const toggleSortOrder = () => {
-    setSortOrder(sortOrder === "newest" ? "oldest" : "newest");
+  // Fixed sort by match function
+  const toggleMatchSort = () => {
+    if (sortOrder === "matchHigh") {
+      setSortOrder("matchLow");
+    } else {
+      setSortOrder("matchHigh");
+    }
   };
 
   const filteredApplications = applications
@@ -210,19 +219,23 @@ export default function ApplicationPanel() {
       return true;
     })
     .sort((a, b) => {
-      if (sortOrder === "newest") {
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      } else if (sortOrder === "oldest") {
-        return (
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-      } else if (sortOrder === "matchHigh") {
-        return (b.matchPercentage || 0) - (a.matchPercentage || 0); // High to Low
-      } else {
-        return (a.matchPercentage || 0) - (b.matchPercentage || 0); // Low to High
+      // Primary sort: Match percentage (if matchHigh/matchLow is active)
+      if (sortOrder === "matchHigh" || sortOrder === "matchLow") {
+        const matchDiff =
+          sortOrder === "matchHigh"
+            ? (b.matchPercentage || 0) - (a.matchPercentage || 0)
+            : (a.matchPercentage || 0) - (b.matchPercentage || 0);
+
+        // Only return if there's a clear difference
+        if (matchDiff !== 0) return matchDiff;
       }
+
+      // Secondary sort: Always apply date sorting
+      return sortOrder === "newest" ||
+        sortOrder === "matchHigh" ||
+        sortOrder === "matchLow"
+        ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() // Newest first
+        : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); // Oldest first
     });
 
   const selectedJob = jobs.find((job) => job._id === selectedJobId);
@@ -382,29 +395,19 @@ export default function ApplicationPanel() {
   }, []);
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-        <div className="flex items-center justify-between ">
-          <div>
-            <h1 className="text-3xl font-bold">SmartHire Admin Panel</h1>
-            <p className="text-gray-600 mt-1">
-              Ажлын байр болон аппликейшн удирдлага
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold ">{applications.length}</p>
-              <p className="text-sm text-gray-500">Нийт CV</p>
-            </div>
-            <div className="w-px h-12 bg-gray-200"></div>
-            <div className="text-center">
-              <p className="text-2xl font-bold">{jobs.length}</p>
-              <p className="text-sm text-gray-500">Ажлын байр</p>
+    <div className="space-y-6 bg-gray-50 min-h-screen">
+      <nav className="bg-white/80 backdrop-blur-md shadow-sm top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-3">
+              <Building2 className="h-8 w-8 text-blue-600" />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                SmartHire
+              </h1>
             </div>
           </div>
         </div>
-      </div>
-
+      </nav>
       <Dialog open={isCvModalOpen} onOpenChange={setIsCvModalOpen}>
         <DialogContent className="min-w-[40vw] min-h-[70vh] overflow-auto m-0">
           <DialogHeader className="">
@@ -443,10 +446,10 @@ export default function ApplicationPanel() {
           onValueChange={setActiveTab}
           className="space-y-6"
         >
-          <TabsList className="grid grid-cols-2 w-full bg-white/50 backdrop-blur-sm h-14 p-1 rounded-xl shadow-lg border border-gray-100">
+          <TabsList className="grid grid-cols-2 w-full bg-white/50 backdrop-blur-sm h-14 p-1 rounded-xl border border-gray-100">
             <TabsTrigger
               value="applications"
-              className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg transition-all duration-200"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
             >
               <Users className="w-5 h-5 mr-2" />
               <span className="font-medium">Аппликейшнууд</span>
@@ -456,7 +459,7 @@ export default function ApplicationPanel() {
             </TabsTrigger>
             <TabsTrigger
               value="jobs"
-              className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg transition-all duration-200"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
             >
               <Briefcase className="w-5 h-5 mr-2" />
               <span className="font-medium">Ажлын байрууд</span>
@@ -470,7 +473,7 @@ export default function ApplicationPanel() {
               {selectedJob && (
                 <div className="w-65 flex-shrink-0 ">
                   <div className="sticky top-4">
-                    <Card className="border-0 shadow-lg bg-white p-0 hover:shadow-xl transition-shadow duration-300">
+                    <Card className="border-0  bg-white p-0 hover:shadow-sm transition-shadow duration-300">
                       <CardContent className="p-6">
                         <div className="flex items-center gap-2 mb-4">
                           <Briefcase className="w-5 h-5 text-blue-600" />
@@ -526,7 +529,7 @@ export default function ApplicationPanel() {
               {/* Main Content */}
               <div className="flex-1 space-y-6">
                 {/* Filters */}
-                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow duration-300">
+                <Card className="border-0 bg-white/80 backdrop-blur-sm hover:shadow-sm transition-shadow duration-300">
                   <CardContent className="p-6">
                     <div className="flex flex-col space-y-4">
                       {/* Job Filter */}
@@ -618,46 +621,41 @@ export default function ApplicationPanel() {
                             Зөвхөн bookmark хийсэн
                           </label>
                         </div>
-                        <button
-                          onClick={() =>
-                            setSortOrder(
-                              sortOrder === "matchHigh"
-                                ? "matchLow"
-                                : sortOrder === "matchLow"
-                                ? "newest"
-                                : "matchHigh"
-                            )
-                          }
-                          className={`p-2 rounded-md transition-colors ${
-                            sortOrder.includes("match")
-                              ? "text-blue-600 bg-blue-50"
-                              : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                          }`}
-                          title={
-                            sortOrder === "matchHigh"
-                              ? "High to Low"
-                              : sortOrder === "matchLow"
-                              ? "Low to High"
-                              : "Sort by match score"
-                          }
-                        >
-                          <TrendingUp
-                            className={`w-4 h-4 ${
+                        <div className="flex items-center gap-5">
+                          {/* Date Sort Toggle */}
+                          {/* <button
+                            onClick={() =>
+                              setSortOrder(
+                                sortOrder === "newest" ? "oldest" : "newest"
+                              )
+                            }
+                            className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+                          >
+                            <Calendar className="w-4 h-4" />
+                            {sortOrder === "newest" ||
+                            sortOrder === "matchHigh" ||
+                            sortOrder === "matchLow"
+                              ? "Шинэ эхэнд"
+                              : "Хуучин эхэнд"}
+                          </button> */}
+                          <button
+                            onClick={toggleMatchSort}
+                            className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${
+                              sortOrder === "matchHigh" ||
                               sortOrder === "matchLow"
-                                ? "transform rotate-180"
-                                : ""
+                                ? "text-blue-600 bg-blue-50 border border-blue-200"
+                                : "text-gray-400 hover:text-blue-600 hover:bg-blue-50 border border-gray-200"
                             }`}
-                          />
-                        </button>
-                        <button
-                          onClick={toggleSortOrder}
-                          className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
-                        >
-                          <Calendar className="w-4 h-4" />
-                          {sortOrder === "newest"
-                            ? "Шинэ эхэнд"
-                            : "Хуучин эхэнд"}
-                        </button>
+                          >
+                            {sortOrder === "matchHigh" ? (
+                              <ArrowDown className="w-4 h-4" />
+                            ) : sortOrder === "matchLow" ? (
+                              <ArrowUp className="w-4 h-4" />
+                            ) : (
+                              <ArrowDownUp className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -676,7 +674,7 @@ export default function ApplicationPanel() {
                     {filteredApplications.map((application) => (
                       <Card
                         key={application._id}
-                        className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                        className="border-0  hover:shadow-sm transition-all duration-300 bg-white/80 backdrop-blur-sm"
                       >
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between">
@@ -806,6 +804,7 @@ export default function ApplicationPanel() {
                           setStatusFilter("all");
                           setBookmarkedOnly(false);
                           setSelectedJobId("all");
+                          setSortOrder("newest");
                         }}
                       >
                         Шүүлтүүр цэвэрлэх
@@ -817,7 +816,7 @@ export default function ApplicationPanel() {
             </div>
           </TabsContent>
           <TabsContent value="jobs" className="space-y-6">
-            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow duration-300">
+            <Card className="border-0  bg-white/80 backdrop-blur-sm hover:shadow-sm transition-shadow duration-300">
               <CardContent className="p-8">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-semibold">
@@ -891,7 +890,7 @@ export default function ApplicationPanel() {
                             </Button>
                           )}
                         </div>
-                      ))}
+                      ))}{" "}
                       <Button
                         type="button"
                         variant="outline"
@@ -904,82 +903,100 @@ export default function ApplicationPanel() {
                       </Button>
                     </div>
                   </div>
-
-                  <Button
-                    type="submit"
-                    variant={"default"}
-                    disabled={isSubmitting}
-                    className="w-full text-white shadow-lg"
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : editingJobId ? (
-                      <Edit className="w-4 h-4 mr-2" />
-                    ) : (
-                      <Plus className="w-4 h-4 mr-2" />
-                    )}
-                    {editingJobId ? "Ажлын байр шинэчлэх" : "Ажлын байр үүсгэх"}
-                  </Button>
+                  <div className="w-full flex justify-end">
+                    {" "}
+                    <Button
+                      type="submit"
+                      variant={"default"}
+                      disabled={isSubmitting}
+                      className=" text-white shadow-sm"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : editingJobId ? (
+                        <Edit className="w-4 h-4 mr-2" />
+                      ) : (
+                        <Plus className="w-4 h-4 mr-2" />
+                      )}
+                      {editingJobId
+                        ? "Ажлын байр шинэчлэх"
+                        : "Ажлын байр үүсгэх"}
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+            <Card className="border-0 shadow-sm bg-white/80 backdrop-blur-sm">
               <CardContent className="p-6">
                 <h2 className="text-lg font-semibold mb-4">Ажлын байрууд</h2>
                 {jobs.length > 0 ? (
-                  <div className="space-y-4">
-                    {jobs.map((job, index) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {jobs.map((job) => (
                       <div
                         key={job._id}
-                        className="border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:scale-[1.01] transition-all duration-300 bg-white animate-fade-in-up"
-                        style={{ animationDelay: `${0.1 + index * 0.05}s` }}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-all duration-200 bg-white flex flex-col"
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-medium text-gray-900">
-                              {job.title}
-                            </h3>
-                            <p className="text-gray-600 mt-1">
-                              {job.description}
-                            </p>
-                            <div className="mt-3">
-                              <p className="text-sm font-medium text-gray-700 mb-2">
-                                Шаардлагууд:
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {job.requirements.map((req, index) => (
-                                  <Badge key={index} variant="secondary">
-                                    {req}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-3">
-                              Үүсгэсэн: {formatDate(job.createdAt)}
-                            </p>
-                          </div>
-                          <div className="flex gap-2">
+                        <div className="flex justify-between gap-2 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 flex-1">
+                            {job.title}
+                          </h3>
+                          <div className="flex gap-1">
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
                               onClick={() => handleEditJob(job)}
-                              disabled={editingJobId === job._id}
+                              className="h-7 w-7 p-0"
                             >
-                              <Edit className="w-4 h-4" />
+                              <Edit className="w-3 h-3" />
                             </Button>
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
                               onClick={() => handleDeleteJob(job._id)}
-                              disabled={deletingJobId === job._id}
+                              className="h-7 w-7 p-0"
                             >
                               {deletingJobId === job._id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3 h-3 animate-spin" />
                               ) : (
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3 h-3" />
                               )}
                             </Button>
                           </div>
+                        </div>
+
+                        <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+                          {job.description}
+                        </p>
+
+                        <div className="mb-3">
+                          <p className="text-xs font-medium text-gray-500 mb-1">
+                            Шаардлагууд:
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {job.requirements.slice(0, 2).map((req, index) => (
+                              <Badge
+                                key={index}
+                                variant="secondary"
+                                className="text-xs font-normal truncate px-2 py-0.5"
+                              >
+                                {req}
+                              </Badge>
+                            ))}
+                            {job.requirements.length > 2 && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs px-2 py-0.5"
+                              >
+                                +{job.requirements.length - 2}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-auto">
+                          <p className="text-xs text-gray-400">
+                            Үүсгэсэн: {formatDate(job.createdAt)}
+                          </p>
                         </div>
                       </div>
                     ))}

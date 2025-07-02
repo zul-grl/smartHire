@@ -100,7 +100,7 @@ export async function POST() {
         if (!application.jobId || !application.extractedText) {
           continue;
         }
-
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const job = application.jobId as any;
         const chunks = chunkText(application.extractedText, 20000);
         const aiResults: AiResult[] = [];
